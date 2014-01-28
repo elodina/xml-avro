@@ -1,0 +1,8 @@
+{"namespace": "ly.stealth",
+ "type": "record",
+ "name": "Element",
+ "fields": [
+     {"name": "name", "type": "string"},
+     {"name": "children", "type": {"type": "array", "items": "Element"} }
+ ]
+}
