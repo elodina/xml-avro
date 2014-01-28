@@ -1,8 +1,27 @@
-{"namespace": "ly.stealth",
- "type": "record",
- "name": "Element",
- "fields": [
-     {"name": "name", "type": "string"},
-     {"name": "children", "type": {"type": "array", "items": "Element"} }
- ]
+{
+  "namespace": "ly.stealth.xmlavro",
+  "protocol": "xml",
+
+  "types": [
+    {
+       "name": "Attribute",
+       "type": "record",
+       "fields": [
+           {"name": "name", "type": "string"},
+           {"name": "value", "type": "string" }
+       ]
+    },
+
+    {
+     "name": "Element",
+     "type": "record",
+     "fields": [
+         {"name": "name", "type": "string"},
+         {"name": "attributes", "type": {"type": "array", "items": "Attribute"}},
+         {"name": "children", "type": {"type": "array", "items": ["Element", "string"]} }
+     ]
+    }
+  ]
 }
+
+

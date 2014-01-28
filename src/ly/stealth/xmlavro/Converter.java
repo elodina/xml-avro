@@ -1,5 +1,6 @@
 package ly.stealth.xmlavro;
 
+import org.apache.avro.Protocol;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
@@ -10,10 +11,8 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.io.DatumReader;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.apache.avro.util.Utf8;
+import org.w3c.dom.*;
 import org.xml.sax.SAXException;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -26,42 +25,69 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class Converter {
-    private static Schema schema;
+    private static Protocol protocol;
     static {
         try {
-            schema = new Schema.Parser().parse(new File("src/ly/stealth/xmlavro/xml.avsc")); // todo fixme
+            InputStream stream = Converter.class.getResourceAsStream("xml.avsc");
+            if (stream == null) throw new IllegalStateException("Classpath should include xml.avsc");
+
+            protocol = Protocol.parse(stream);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public static void convertXml(File xmlFile, File avroFile) throws IOException, SAXException {
+    public static void xmlToAvro(File xmlFile, File avroFile) throws IOException, SAXException {
+        Schema schema = protocol.getType("Element");
+
         Document doc = parse(xmlFile);
         DatumWriter<GenericRecord> datumWriter = new SpecificDatumWriter<>(schema);
 
         try (DataFileWriter<GenericRecord> fileWriter = new DataFileWriter<>(datumWriter)) {
             fileWriter.create(schema, avroFile);
-            fileWriter.append(wrap(doc.getDocumentElement()));
+            fileWriter.append(wrapElement(doc.getDocumentElement()));
         }
     }
 
-    private static GenericData.Record wrap(Element el) {
-        GenericData.Record record = new GenericData.Record(schema);
+    private static GenericData.Record wrapElement(Element el) {
+        GenericData.Record record = new GenericData.Record(protocol.getType("Element"));
         record.put("name", el.getNodeName());
 
-        List<GenericData.Record> childRecords = new ArrayList<>();
+        NamedNodeMap attributeNodes = el.getAttributes();
+        List<GenericData.Record> attrRecords = new ArrayList<>();
+        for (int i = 0; i < attributeNodes.getLength(); i++) {
+            Attr attr = (Attr) attributeNodes.item(i);
+            attrRecords.add(wrapAttr(attr));
+        }
+        record.put("attributes", attrRecords);
+
+        List<Object> childArray = new ArrayList<>();
         NodeList childNodes = el.getChildNodes();
         for (int i = 0; i < childNodes.getLength(); i++) {
             Node node = childNodes.item(i);
             if (node.getNodeType() == Node.ELEMENT_NODE)
-                childRecords.add(wrap((Element) node));
-        }
+                childArray.add(wrapElement((Element) node));
 
-        record.put("children", childRecords);
+            if (node.getNodeType() == Node.TEXT_NODE)
+                childArray.add(node.getTextContent());
+        }
+        record.put("children", childArray);
+
+        return record;
+    }
+
+    private static GenericData.Record wrapAttr(Attr attr) {
+        GenericData.Record record = new GenericData.Record(protocol.getType("Attribute"));
+
+        record.put("name", attr.getName());
+        record.put("value", attr.getValue());
+
         return record;
     }
 
@@ -74,8 +100,8 @@ public class Converter {
         }
     }
 
-    public static void convertAvro(File avroFile, File xmlFile) throws IOException {
-        DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(schema);
+    public static void avroToXml(File avroFile, File xmlFile) throws IOException {
+        DatumReader<GenericRecord> datumReader = new GenericDatumReader<>(protocol.getType("Element"));
         DataFileReader<GenericRecord> dataFileReader = new DataFileReader<>(avroFile, datumReader);
 
         GenericRecord record = dataFileReader.next();
@@ -87,25 +113,38 @@ public class Converter {
             throw new RuntimeException(e);
         }
 
-        Element el = unwrap(record, doc);
+        Element el = unwrapElement(record, doc);
         doc.appendChild(el);
 
         saveDocument(doc, xmlFile);
     }
 
-    private static Element unwrap(GenericRecord record, Document doc) {
+    private static Element unwrapElement(GenericRecord record, Document doc) {
         String name = "" + record.get("name");
         Element el = doc.createElement(name);
 
         @SuppressWarnings("unchecked")
-        GenericArray<GenericRecord> childArray = (GenericArray<GenericRecord>) record.get("children");
+        GenericArray<GenericRecord> attrArray = (GenericArray<GenericRecord>) record.get("attributes");
+        for (GenericRecord attrRecord : attrArray)
+            el.setAttributeNode(unwrapAttr(attrRecord, doc));
 
-        for (GenericRecord childRecord : childArray) {
-            Element childEl = unwrap(childRecord, doc);
-            el.appendChild(childEl);
+        @SuppressWarnings("unchecked")
+        GenericArray<Object> childArray = (GenericArray<Object>) record.get("children");
+        for (Object childObj : childArray) {
+            if (childObj instanceof GenericRecord)
+                el.appendChild(unwrapElement((GenericRecord) childObj, doc));
+
+            if (childObj instanceof Utf8)
+                el.appendChild(doc.createTextNode("" + childObj));
         }
 
         return el;
+    }
+
+    private static Attr unwrapAttr(GenericRecord record, Document doc) {
+        Attr attr = doc.createAttribute("" + record.get("name"));
+        attr.setValue("" + record.get("value"));
+        return attr;
     }
 
     private static void saveDocument(Document doc, File file) {
@@ -118,7 +157,22 @@ public class Converter {
     }
 
     public static void main(String[] args) throws IOException, SAXException {
-        convertXml(new File("1.xml"), new File("1.avro"));
-        convertAvro(new File("1.avro"), new File("1_.xml"));
+        if (args.length != 3 || !Arrays.asList("xml", "avro").contains(args[0])) {
+            System.out.println("Usage: \n {xml|avro} input-file output-file\n");
+            System.exit(1);
+        }
+
+        File inputFile = new File(args[1]);
+        File outputFile = new File(args[2]);
+
+        String conversion = args[0];
+        switch (conversion) {
+            case "xml":
+                avroToXml(inputFile, outputFile);
+                break;
+            case "avro":
+                xmlToAvro(inputFile, outputFile);
+                break;
+        }
     }
 }
