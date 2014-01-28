@@ -3,6 +3,7 @@ package ly.stealth.xmlavro;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericArray;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
 import org.apache.avro.generic.GenericRecord;
@@ -18,7 +19,9 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.*;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerException;
+import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.File;
@@ -84,12 +87,25 @@ public class Converter {
             throw new RuntimeException(e);
         }
 
-        unwrap(record, doc.getDocumentElement());
+        Element el = unwrap(record, doc);
+        doc.appendChild(el);
+
         saveDocument(doc, xmlFile);
     }
 
-    private static void unwrap(GenericRecord record, Element el) {
-        // todo
+    private static Element unwrap(GenericRecord record, Document doc) {
+        String name = "" + record.get("name");
+        Element el = doc.createElement(name);
+
+        @SuppressWarnings("unchecked")
+        GenericArray<GenericRecord> childArray = (GenericArray<GenericRecord>) record.get("children");
+
+        for (GenericRecord childRecord : childArray) {
+            Element childEl = unwrap(childRecord, doc);
+            el.appendChild(childEl);
+        }
+
+        return el;
     }
 
     private static void saveDocument(Document doc, File file) {
@@ -103,5 +119,6 @@ public class Converter {
 
     public static void main(String[] args) throws IOException, SAXException {
         convertXml(new File("1.xml"), new File("1.avro"));
+        convertAvro(new File("1.avro"), new File("1_.xml"));
     }
 }
