@@ -8,14 +8,11 @@ import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
 import com.sun.org.apache.xerces.internal.xs.*;
 import org.apache.avro.Schema;
 import org.w3c.dom.ls.LSInput;
-import org.xml.sax.SAXException;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
-public class SchemaConverter {
+public class AvroTypes {
     private static XSModel parseSchema(File file) throws IOException {
         try (InputStream stream = new FileInputStream(file)) {
             return parseSchema(stream);
@@ -48,34 +45,45 @@ public class SchemaConverter {
     }
 
     private XSModel schema;
-    private List<Schema> avroSchemas = new ArrayList<>();
+    private Map<XSComplexTypeDefinition, Schema> records = new HashMap<>();
 
-    public SchemaConverter(String xsd) { this(parseSchema(new StringReader(xsd))); }
-    public SchemaConverter(File file) throws IOException { this(parseSchema(file)); }
+    public AvroTypes(String xsd) { this(parseSchema(new StringReader(xsd))); }
+    public AvroTypes(File file) throws IOException { this(parseSchema(file)); }
 
-    public SchemaConverter(Reader reader) { this(parseSchema(reader)); }
-    public SchemaConverter(InputStream stream) { this(parseSchema(stream)); }
+    public AvroTypes(Reader reader) { this(parseSchema(reader)); }
+    public AvroTypes(InputStream stream) { this(parseSchema(stream)); }
 
-    private SchemaConverter(XSModel schema) {
+    private AvroTypes(XSModel schema) {
         this.schema = schema;
-    }
 
-    public List<Schema> getAvroSchemas() { return Collections.unmodifiableList(avroSchemas); }
-
-    public void convert() {
         XSNamedMap map = schema.getComponents(XSTypeDefinition.COMPLEX_TYPE);
         for (int i = 0; i < map.getLength(); i++) {
-            XSTypeDefinition type = (XSTypeDefinition) map.item(i);
+            XSComplexTypeDefinition type = (XSComplexTypeDefinition) map.item(i);
+            if ("http://www.w3.org/2001/XMLSchema".equals(type.getNamespace())) continue;
 
-            if ("http://www.w3.org/2001/XMLSchema".equals(type.getNamespace()))
-                continue;
-
-            avroSchemas.add(wrapComplexType((XSComplexTypeDefinition) type));
+            records.put(type, wrapComplexType(type));
         }
     }
 
+    public XSModel getSchema() { return schema; }
+
+    public Map<XSComplexTypeDefinition, Schema> getRecords() {
+        return Collections.unmodifiableMap(records);
+    }
+
+    public Schema getRecord(XSComplexTypeDefinition typeDef) { return records.get(typeDef); }
+
+    public Schema getRecordByRootElement(String name, String namespace) {
+        XSElementDeclaration elDecl = schema.getElementDeclaration(name, namespace);
+        if (elDecl == null) return null;
+
+        // todo support simple type?
+        XSComplexTypeDefinition typeDef = (XSComplexTypeDefinition) elDecl.getTypeDefinition();
+        return getRecord(typeDef);
+    }
+
     private Schema wrapComplexType(XSComplexTypeDefinition type) {
-        Schema schema = Schema.createRecord(type.getName(), "", type.getNamespace(), false);
+        Schema schema = Schema.createRecord(type.getName(), null, type.getNamespace(), false);
 
         List<Schema.Field> fields = new ArrayList<>();
         XSParticle particle = type.getParticle();
@@ -113,17 +121,14 @@ public class SchemaConverter {
     }
 
     private Schema.Field wrapElementDecl(XSElementDeclaration elDecl) {
-        // todo support of types
-        // todo check is el type is simple type
-        return new Schema.Field(elDecl.getName(), Schema.create(Schema.Type.STRING), null, null);
-    }
+        XSTypeDefinition typeDef = elDecl.getTypeDefinition();
 
-    public static void main(String[] args) throws IOException, SAXException {
-        SchemaConverter converter = new SchemaConverter(new File("test.xsd"));
-        converter.convert();
+        Schema schema = typeDef.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE ?
+                Schema.create(Schema.Type.STRING) :
+                wrapComplexType((XSComplexTypeDefinition) typeDef);
 
-        for (Schema schema : converter.getAvroSchemas())
-            System.out.println(schema.toString(true));
+        // todo support of different types
+        return new Schema.Field(elDecl.getName(), schema, null, null);
     }
 
     private static class ErrorHandler implements XMLErrorHandler {
