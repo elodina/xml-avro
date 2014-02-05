@@ -1,0 +1,21 @@
+<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>
+
+    <xsd:element name='order' type='OrderType'/>
+    <xsd:element name='comment'       type='xsd:string'/>
+
+    <xsd:complexType name='OrderType'>
+        <xsd:sequence>
+            <xsd:element name='shipTo'    type='USAddress'/>
+            <xsd:element name='billTo'    type='USAddress'/>
+            <xsd:element ref='comment' minOccurs='0'/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name='USAddress'>
+        <xsd:sequence>
+            <xsd:element name='name'   type='xsd:string'/>
+            <xsd:element name='street' type='xsd:string'/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+</xsd:schema>
