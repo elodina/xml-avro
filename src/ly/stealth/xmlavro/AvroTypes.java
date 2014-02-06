@@ -61,7 +61,7 @@ public class AvroTypes {
             XSComplexTypeDefinition type = (XSComplexTypeDefinition) map.item(i);
             if ("http://www.w3.org/2001/XMLSchema".equals(type.getNamespace())) continue;
 
-            records.put(type, wrapComplexType(type));
+            records.put(type, createRecordSchema(type));
         }
     }
 
@@ -82,53 +82,63 @@ public class AvroTypes {
         return getRecord(typeDef);
     }
 
-    private Schema wrapComplexType(XSComplexTypeDefinition type) {
+    private Schema createRecordSchema(XSComplexTypeDefinition type) {
         Schema schema = Schema.createRecord(type.getName(), null, type.getNamespace(), false);
+        schema.setFields(createFields(type));
 
-        List<Schema.Field> fields = new ArrayList<>();
-        XSParticle particle = type.getParticle();
-        if (particle != null) {
-            XSTerm term = particle.getTerm();
-
-            switch (term.getType()) {
-                case XSConstants.MODEL_GROUP:
-                    XSModelGroup group = (XSModelGroup) term;
-
-                    XSObjectList particles = group.getParticles();
-                    for (int j = 0; j < particles.getLength(); j++) {
-                        XSParticle groupParticle = (XSParticle) particles.item(j);
-                        XSTerm groupTerm = groupParticle.getTerm();
-
-                        switch (groupTerm.getType()) {
-                            case XSConstants.ELEMENT_DECLARATION:
-                                XSElementDeclaration elDecl = (XSElementDeclaration) groupTerm;
-                                fields.add(wrapElementDecl(elDecl));
-                                break;
-                            default:
-                                throw new UnsupportedOperationException("Unsupported term type " + term.getType());
-                        }
-                    }
-
-                    // todo;
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Unsupported term type " + term.getType());
-            }
-        }
-
-        schema.setFields(fields);
         return schema;
     }
 
-    private Schema.Field wrapElementDecl(XSElementDeclaration elDecl) {
-        XSTypeDefinition typeDef = elDecl.getTypeDefinition();
+    private List<Schema.Field> createFields(XSComplexTypeDefinition type) {
+        final Map<String, Schema.Field> fields = new LinkedHashMap<>();
+
+        XSParticle particle = type.getParticle();
+        if (particle == null) return new ArrayList<>(fields.values());
+
+        XSTerm term = particle.getTerm();
+        if (term.getType() != XSConstants.MODEL_GROUP)
+            throw new UnsupportedOperationException("Unsupported term type");
+
+        XSModelGroup group = (XSModelGroup) term;
+
+        new Object() {
+            void collectFields(XSModelGroup group) {
+                XSObjectList particles = group.getParticles();
+
+                for (int j = 0; j < particles.getLength(); j++) {
+                    XSParticle particle = (XSParticle) particles.item(j);
+                    XSTerm term = particle.getTerm();
+
+                    switch (term.getType()) {
+                        case XSConstants.ELEMENT_DECLARATION:
+                            XSElementDeclaration el = (XSElementDeclaration) term;
+                            Schema.Field field = createField(el);
+                            fields.put(field.name(), field);
+                            break;
+                        case XSConstants.MODEL_GROUP:
+                            XSModelGroup subGroup = (XSModelGroup) term;
+                            collectFields(subGroup);
+                            break;
+                        default:
+                            throw new UnsupportedOperationException("Unsupported term type " + term.getType());
+                    }
+                }
+            }
+        }.collectFields(group);
+
+        return new ArrayList<>(fields.values());
+    }
+
+    private Schema.Field createField(XSElementDeclaration el) {
+        XSTypeDefinition typeDef = el.getTypeDefinition();
 
         Schema schema = typeDef.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE ?
                 Schema.create(Schema.Type.STRING) :
-                wrapComplexType((XSComplexTypeDefinition) typeDef);
+                createRecordSchema((XSComplexTypeDefinition) typeDef);
 
         // todo support of different types
-        return new Schema.Field(elDecl.getName(), schema, null, null);
+        // todo use unique name
+        return new Schema.Field(el.getName(), schema, null, null);
     }
 
     private static class ErrorHandler implements XMLErrorHandler {
