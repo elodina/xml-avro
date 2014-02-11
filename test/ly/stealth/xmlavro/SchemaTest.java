@@ -5,17 +5,17 @@ import org.junit.Test;
 
 import static junit.framework.Assert.*;
 
-public class AvroSchemaTest {
+public class SchemaTest {
     @Test
     public void basic() {
         String xsd = "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
                      "  <xsd:element name='root' type='xsd:string'/>" +
                      "</xsd:schema>";
 
-        new AvroSchema(xsd);
+        new Schema(xsd);
 
         try { // no namespace
-            new AvroSchema("<schema/>");
+            new Schema("<schema/>");
             fail();
         } catch (XMLParseException e) {
             String message = e.getMessage();
@@ -31,8 +31,8 @@ public class AvroSchemaTest {
                 "   <xsd:element name='i' type='xsd:int'/>" +
                 "</xsd:schema>";
 
-        AvroSchema schema = new AvroSchema(xsd);
-        assertEquals(AvroSchema.Primitive.INT, schema.getRootType("i"));
+        Schema schema = new Schema(xsd);
+        assertEquals(Value.Type.INT, schema.getRootType("i"));
     }
 
     @Test
@@ -48,20 +48,20 @@ public class AvroSchemaTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        AvroSchema schema = new AvroSchema(xsd);
+        Schema schema = new Schema(xsd);
 
-        AvroSchema.Record record = schema.getRootType("root");
-        assertEquals(new AvroSchema.QName("type"), record.getQName());
+        Record.Type record = schema.getRootType("root");
+        assertEquals(new QName("type"), record.getQName());
 
         assertEquals(2, record.getFields().size());
 
-        AvroSchema.Field field0 = record.getFields().get(0);
+        Record.Field field0 = record.getFields().get(0);
         assertEquals("s", field0.getName());
-        assertEquals(AvroSchema.Primitive.STRING, field0.getType());
+        assertEquals(Value.Type.STRING, field0.getType());
 
-        AvroSchema.Field field1 = record.getFields().get(1);
+        Record.Field field1 = record.getFields().get(1);
         assertEquals("i", field1.getName());
-        assertEquals(AvroSchema.Primitive.INT, field1.getType());
+        assertEquals(Value.Type.INT, field1.getType());
     }
 
     @Test
@@ -81,15 +81,15 @@ public class AvroSchemaTest {
                 "  <xsd:element name='root' type='outer'/>" +
                 "</xsd:schema>";
 
-        AvroSchema schema = new AvroSchema(xsd);
+        Schema schema = new Schema(xsd);
 
-        AvroSchema.Record record = schema.getRootType("root");
-        assertEquals(new AvroSchema.QName("outer"), record.getQName());
+        Record.Type record = schema.getRootType("root");
+        assertEquals(new QName("outer"), record.getQName());
 
-        AvroSchema.Field innerField = record.getField("inner");
-        assertTrue(innerField.getType().getClass().getName(), innerField.getType() instanceof AvroSchema.Record);
+        Record.Field innerField = record.getField("inner");
+        assertTrue(innerField.getType().getClass().getName(), innerField.getType() instanceof Record.Type);
 
-        AvroSchema.Record innerRecord = innerField.getType();
+        Record.Type innerRecord = innerField.getType();
         assertEquals("inner", innerRecord.getQName().getName());
     }
 
@@ -105,10 +105,10 @@ public class AvroSchemaTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        AvroSchema.Record record = new AvroSchema(xsd).getRootType("root");
+        Record.Type record = new Schema(xsd).getRootType("root");
 
-        AvroSchema.Field field = record.getField("node");
-        AvroSchema.Record subRecord = field.getType();
+        Record.Field field = record.getField("node");
+        Record.Type subRecord = field.getType();
         assertSame(record, subRecord);
     }
 }

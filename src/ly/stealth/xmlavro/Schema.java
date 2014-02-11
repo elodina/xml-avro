@@ -11,7 +11,7 @@ import org.w3c.dom.ls.LSInput;
 import java.io.*;
 import java.util.*;
 
-public class AvroSchema {
+public class Schema {
     private static XSModel parse(File file) throws IOException {
         try (InputStream stream = new FileInputStream(file)) {
             return parse(stream);
@@ -44,27 +44,28 @@ public class AvroSchema {
     }
 
     private XSModel schema;
+
     // Type by QName, where QName:
-    // - type QName for named types
-    // - element QName for anonymous or simple types of root elements
-    private Map<QName, Type> types = new LinkedHashMap<>();
+    // - QName of type for named types
+    // - QName of element for anonymous or simple types of root elements
+    private Map<QName, Datum.Type> types = new LinkedHashMap<>();
 
-    public AvroSchema(String xsd) { this(parse(new StringReader(xsd))); }
+    public Schema(String xsd) { this(parse(new StringReader(xsd))); }
 
-    public AvroSchema(File file) throws IOException { this(parse(file)); }
+    public Schema(File file) throws IOException { this(parse(file)); }
 
-    public AvroSchema(Reader reader) { this(parse(reader)); }
-    public AvroSchema(InputStream stream) { this(parse(stream)); }
+    public Schema(Reader reader) { this(parse(reader)); }
+    public Schema(InputStream stream) { this(parse(stream)); }
 
-    private AvroSchema(XSModel schema) {
+    private Schema(XSModel schema) {
         this.schema = schema;
         initTypes();
     }
 
-    public <T extends Type> T getRootType(String name) { return getRootType(new QName(name)); }
+    public <T extends Datum.Type> T getRootType(String name) { return getRootType(new QName(name)); }
 
     @SuppressWarnings("unchecked")
-    public <T extends Type> T getRootType(QName rootElement) {
+    public <T extends Datum.Type> T getRootType(QName rootElement) {
         XSElementDeclaration el = schema.getElementDeclaration(rootElement.getName(), rootElement.getNamespace());
         if (el == null) throw new IllegalArgumentException("Root element definition " + rootElement + " not found");
 
@@ -76,7 +77,7 @@ public class AvroSchema {
     }
 
     @SuppressWarnings("unchecked")
-    public <T extends Type> T getNamedType(QName qName) {
+    public <T extends Datum.Type> T getNamedType(QName qName) {
         return (T) types.get(qName);
     }
 
@@ -86,39 +87,39 @@ public class AvroSchema {
             XSTypeDefinition xmlType = (XSTypeDefinition) typeMap.item(i);
             if ("http://www.w3.org/2001/XMLSchema".equals(xmlType.getNamespace())) continue;
 
-            Type type = createType(xmlType);
+            Datum.Type type = createType(xmlType);
             if (!type.isAnonymous()) types.put(type.getQName(), type);
         }
 
         XSNamedMap elMap = schema.getComponents(XSConstants.ELEMENT_DECLARATION);
         for (int i = 0; i < elMap.getLength(); i++) {
             XSElementDeclaration el = (XSElementDeclaration) elMap.item(i);
-            Type type = createType(el.getTypeDefinition());
+            Datum.Type type = createType(el.getTypeDefinition());
 
             if (type.isAnonymous() || type.isPrimitive())
                 types.put(new QName(el.getName(), el.getNamespace()), type);
         }
     }
 
-    private Type createType(XSTypeDefinition type) {
+    private Datum.Type createType(XSTypeDefinition type) {
         if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
-            return Primitive.valueOf((XSSimpleTypeDefinition) type);
+            return Value.Type.valueOf((XSSimpleTypeDefinition) type);
         else
             return createRecord((XSComplexTypeDefinition) type);
     }
 
-    private Record createRecord(XSComplexTypeDefinition type) {
+    private Record.Type createRecord(XSComplexTypeDefinition type) {
         QName qName = !type.getAnonymous() ? new QName(type.getName(), type.getNamespace()) : null;
 
-        Record record = new Record(qName);
+        Record.Type record = new Record.Type(qName);
         if (qName != null) types.put(qName, record);
 
         record.fields.addAll(createFields(type));
         return record;
     }
 
-    private List<Field> createFields(XSComplexTypeDefinition type) {
-        final Map<String, Field> fields = new LinkedHashMap<>();
+    private List<Record.Field> createFields(XSComplexTypeDefinition type) {
+        final Map<String, Record.Field> fields = new LinkedHashMap<>();
 
         XSParticle particle = type.getParticle();
         if (particle == null) return new ArrayList<>(fields.values());
@@ -139,8 +140,8 @@ public class AvroSchema {
                     switch (term.getType()) {
                         case XSConstants.ELEMENT_DECLARATION:
                             XSElementDeclaration el = (XSElementDeclaration) term;
-                            Field field = createField(el);
-                            fields.put(field.name, field);
+                            Record.Field field = createField(el);
+                            fields.put(field.getName(), field);
                             break;
                         case XSConstants.MODEL_GROUP:
                             XSModelGroup subGroup = (XSModelGroup) term;
@@ -156,135 +157,19 @@ public class AvroSchema {
         return new ArrayList<>(fields.values());
     }
 
-    private Field createField(XSElementDeclaration el) {
+    private Record.Field createField(XSElementDeclaration el) {
         XSTypeDefinition type = el.getTypeDefinition();
 
         boolean simple = type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
-        Type fieldType;
+        Datum.Type fieldType;
 
-        if (simple) fieldType = Primitive.valueOf((XSSimpleTypeDefinition) type);
+        if (simple) fieldType = Value.Type.valueOf((XSSimpleTypeDefinition) type);
         else {
             fieldType = getNamedType(new QName(type.getName(), type.getNamespace()));
             if (fieldType == null) fieldType = createRecord((XSComplexTypeDefinition) type);
         }
 
-        return new Field(el.getName(), fieldType);
-    }
-
-    public interface Type {
-        QName getQName();
-        boolean isAnonymous();
-        boolean isPrimitive();
-    }
-
-    public static enum Primitive implements Type {
-        NULL,       // no value
-        BOOLEAN,    // a binary value
-        INT,        // 32-bit signed integer
-        LONG,       // 64-bit signed integer
-        FLOAT,      // single precision (32-bit) IEEE 754 floating-point number
-        DOUBLE,     // double precision (64-bit) IEEE 754 floating-point number
-        BYTES,      // sequence of 8-bit unsigned bytes
-        STRING;     // unicode character sequence
-
-        static Primitive valueOf(XSSimpleTypeDefinition type) {
-            switch (type.getBuiltInKind()) {
-                case XSConstants.BOOLEAN_DT: return BOOLEAN;
-                case XSConstants.INT_DT: return INT;
-                case XSConstants.LONG_DT: return LONG;
-                case XSConstants.FLOAT_DT: return FLOAT;
-                case XSConstants.DOUBLE_DT: return DOUBLE;
-                default: return STRING;
-            }
-        }
-
-
-        @Override
-        public QName getQName() { return new QName(name()); }
-
-        @Override
-        public boolean isAnonymous() { return false; }
-
-        @Override
-        public boolean isPrimitive() { return true; }
-    }
-
-    public class Record implements Type {
-        private QName qName;
-        private List<Field> fields = new ArrayList<>();
-
-        public Record(QName qName) {
-            this.qName = qName;
-        }
-
-        public QName getQName() { return qName; }
-
-        public List<Field> getFields() { return Collections.unmodifiableList(fields); }
-
-        public Field getField(String name) {
-            for (Field field : fields)
-                if (field.name.equals(name))
-                    return field;
-
-            throw new IllegalArgumentException("Field " + name + " not found");
-        }
-
-
-        @Override
-        public boolean isAnonymous() { return qName != null; }
-
-        @Override
-        public boolean isPrimitive() { return false; }
-    }
-
-    public static class Field {
-        private String name;
-        private Type type;
-        private String doc;
-
-        public Field(String name, Type type) { this(name, type, null); }
-
-        public Field(String name, Type type, String doc) {
-            this.name = name;
-            this.type = type;
-            this.doc = doc;
-        }
-
-        public String getName() { return name; }
-
-        @SuppressWarnings("unchecked")
-        public <T extends Type> T getType() { return (T) type; }
-
-        public String getDoc() { return doc; }
-    }
-
-    public static class QName {
-        private String name, namespace;
-
-        public QName(String name) { this(name, null); }
-
-        public QName(String name, String namespace) {
-            if (name == null) throw new NullPointerException("qName");
-            this.name = name;
-            this.namespace = namespace;
-        }
-
-        public String getName() { return name; }
-        public String getNamespace() { return namespace; }
-
-        public int hashCode() {
-            return Objects.hash(name, namespace);
-        }
-
-        public boolean equals(Object obj) {
-            if (!(obj instanceof QName)) return false;
-            QName qName = (QName) obj;
-            return name.equals(qName.name) && Objects.equals(namespace, qName.namespace);
-        }
-
-        public String toString() {
-            return (namespace != null ? "{" + namespace + "}" : "") + name;
-        }
+        return new Record.Field(el.getName(), fieldType);
     }
 
     private static class ErrorHandler implements XMLErrorHandler {
