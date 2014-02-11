@@ -2,6 +2,7 @@ package ly.stealth.xmlavro;
 
 import com.sun.org.apache.xerces.internal.xs.XSConstants;
 import com.sun.org.apache.xerces.internal.xs.XSSimpleTypeDefinition;
+import org.apache.avro.Schema;
 
 public class Value implements Datum {
     private Type type;
@@ -15,6 +16,8 @@ public class Value implements Datum {
     public Type getType() { return type; }
 
     public Object getObject() { return object; }
+
+    public Object toAvroDatum() { return getObject(); }
 
     public static enum Type implements Datum.Type {
         NULL,       // no value
@@ -45,5 +48,33 @@ public class Value implements Datum {
 
         @Override
         public boolean isPrimitive() { return true; }
+
+        private Schema.Type toAvroType() {
+            switch (this) {
+                case NULL:
+                    return Schema.Type.NULL;
+                case BOOLEAN:
+                    return Schema.Type.BOOLEAN;
+                case INT:
+                    return Schema.Type.INT;
+                case LONG:
+                    return Schema.Type.LONG;
+                case FLOAT:
+                    return Schema.Type.FLOAT;
+                case DOUBLE:
+                    return Schema.Type.DOUBLE;
+                case BYTES:
+                    return Schema.Type.BYTES;
+                case STRING:
+                    return Schema.Type.STRING;
+                default:
+                    throw new UnsupportedOperationException("Unsupported type " + this);
+            }
+        }
+
+        @Override
+        public Schema toAvroSchema() {
+            return Schema.create(toAvroType());
+        }
     }
 }

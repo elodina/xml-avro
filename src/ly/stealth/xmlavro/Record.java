@@ -1,5 +1,9 @@
 package ly.stealth.xmlavro;
 
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+
 import java.util.*;
 
 public class Record implements Datum {
@@ -19,6 +23,15 @@ public class Record implements Datum {
     public Object getValue(String name) {
         Datum datum = getDatum(name);
         return datum instanceof Value ? ((Value)datum).getObject() : null;
+    }
+
+    public Object toAvroDatum() {
+        GenericRecord record = new GenericData.Record(type.toAvroSchema());
+
+        for (String name : datums.keySet())
+            record.put(name, datums.get(name).toAvroDatum());
+
+        return record;
     }
 
     public static class Type implements Datum.Type {
@@ -47,6 +60,20 @@ public class Record implements Datum {
 
         @Override
         public boolean isPrimitive() { return false; }
+
+        @Override
+        public Schema toAvroSchema() {
+            String name = qName != null ? qName.getName() : null;
+            String namespace = qName != null ? qName.getNamespace() : null;
+            Schema schema = org.apache.avro.Schema.createRecord(name, null, namespace, false);
+
+            List<Schema.Field> fields = new ArrayList<>();
+            for (Field field : this.fields)
+                fields.add(new Schema.Field(field.getName(), field.getType().toAvroSchema(), null, null));
+
+            schema.setFields(fields);
+            return schema;
+        }
     }
 
     public static class Field {

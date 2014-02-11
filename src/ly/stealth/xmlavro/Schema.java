@@ -65,9 +65,9 @@ public class Schema {
     public <T extends Datum.Type> T getRootType(String name) { return getRootType(new QName(name)); }
 
     @SuppressWarnings("unchecked")
-    public <T extends Datum.Type> T getRootType(QName rootElement) {
-        XSElementDeclaration el = schema.getElementDeclaration(rootElement.getName(), rootElement.getNamespace());
-        if (el == null) throw new IllegalArgumentException("Root element definition " + rootElement + " not found");
+    public <T extends Datum.Type> T getRootType(QName rootQName) {
+        XSElementDeclaration el = schema.getElementDeclaration(rootQName.getName(), rootQName.getNamespace());
+        if (el == null) throw new IllegalArgumentException("Root element definition " + rootQName + " not found");
 
         XSTypeDefinition type = el.getTypeDefinition();
         boolean anonymousOrSimple = type.getAnonymous() || type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
@@ -79,6 +79,18 @@ public class Schema {
     @SuppressWarnings("unchecked")
     public <T extends Datum.Type> T getNamedType(QName qName) {
         return (T) types.get(qName);
+    }
+
+    public void write(QName rootQName, File file) throws IOException {
+        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), "UTF-8")) {
+            save(rootQName, writer);
+        }
+    }
+
+    public void save(QName rootQName, Writer writer) throws IOException {
+        Datum.Type type = getRootType(rootQName);
+        org.apache.avro.Schema schema = type.toAvroSchema();
+        writer.write(schema.toString(true));
     }
 
     private void initTypes() {

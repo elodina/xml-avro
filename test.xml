@@ -1,12 +1,12 @@
 <order xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xsi:noNamespaceSchemaLocation="file://test.xsd">
     <shipTo>
-        <name>name</name>
-        <street>street</street>
+        <name>s name</name>
+        <street>s street</street>
     </shipTo>
     <billTo>
-        <name>name</name>
-        <street>street</street>
+        <name>b name</name>
+        <street>b street</street>
     </billTo>
     <comment>comment</comment>
 </order>

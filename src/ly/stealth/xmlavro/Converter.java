@@ -1,5 +1,8 @@
 package ly.stealth.xmlavro;
 
+import org.apache.avro.io.DatumWriter;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumWriter;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -10,16 +13,28 @@ import org.xml.sax.SAXException;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringReader;
+import java.io.*;
 
 public class Converter {
     private Schema schema;
 
     public Converter(Schema schema) {
         this.schema = schema;
+    }
+
+    public void convert(File inputFile, File outputFile) throws IOException, SAXException {
+        try (InputStream inputStream = new FileInputStream(inputFile);
+            OutputStream outputStream = new FileOutputStream(outputFile)) {
+            convert(inputStream, outputStream);
+        }
+    }
+
+    public void convert(InputStream inputStream, OutputStream outputStream) throws IOException, SAXException {
+        Datum datum = convert(inputStream);
+        org.apache.avro.Schema schema = datum.getType().toAvroSchema();
+
+        DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
+        datumWriter.write(datum.toAvroDatum(), EncoderFactory.get().directBinaryEncoder(outputStream, null));
     }
 
     public <D extends Datum> D convert(String s) throws SAXException {
@@ -92,5 +107,4 @@ public class Converter {
                 throw new UnsupportedOperationException("Unsupported type " + type);
         }
     }
-
 }
