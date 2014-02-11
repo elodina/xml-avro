@@ -3,10 +3,7 @@ package ly.stealth.xmlavro;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
@@ -63,12 +60,11 @@ public class Converter {
 
     private <D extends Datum> D createDatum(Datum.Type type, Element el) {
         @SuppressWarnings("unchecked")
-        D datum = (D) (type.isPrimitive() ? createValue((Value.Type) type, el) : createRecord((Record.Type) type, el));
+        D datum = (D) (type.isPrimitive() ? createValue((Value.Type) type, el.getTextContent()) : createRecord((Record.Type) type, el));
         return datum;
     }
 
-    private Value createValue(Value.Type type, Element el) {
-        String text = el.getTextContent();
+    private Value createValue(Value.Type type, String text) {
         return new Value(type, parseValue(type, text));
     }
 
@@ -81,9 +77,19 @@ public class Converter {
             if (node.getNodeType() != Node.ELEMENT_NODE) continue;
 
             Element child = (Element) node;
-
             Record.Field field = type.getField(child.getTagName());
-            record.datums.put(field.getName(), createDatum(field.getType(), child));
+
+            Datum datum = createDatum(field.getType(), child);
+            record.datums.put(field.getName(), datum);
+        }
+
+        NamedNodeMap attrMap = el.getAttributes();
+        for (int i = 0; i < attrMap.getLength(); i++) {
+            Attr attr = (Attr) attrMap.item(i);
+            Record.Field field = type.getField(attr.getName());
+
+            Value value = createValue((Value.Type) field.getType(), attr.getValue());
+            record.datums.put(attr.getName(), value);
         }
 
         return record;

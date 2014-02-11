@@ -76,6 +76,8 @@ public class Schema {
         return (T) types.get(name);
     }
 
+    public <T extends Datum.Type> T getNamedType(String name) { return getNamedType(new QName(name)); }
+
     @SuppressWarnings("unchecked")
     public <T extends Datum.Type> T getNamedType(QName qName) {
         return (T) types.get(qName);
@@ -142,7 +144,7 @@ public class Schema {
 
         XSModelGroup group = (XSModelGroup) term;
         new Object() {
-            void collectFields(XSModelGroup group) {
+            void collectElementFields(XSModelGroup group) {
                 XSObjectList particles = group.getParticles();
 
                 for (int j = 0; j < particles.getLength(); j++) {
@@ -152,26 +154,33 @@ public class Schema {
                     switch (term.getType()) {
                         case XSConstants.ELEMENT_DECLARATION:
                             XSElementDeclaration el = (XSElementDeclaration) term;
-                            Record.Field field = createField(el);
+                            Record.Field field = createField(el.getName(), el.getTypeDefinition());
                             fields.put(field.getName(), field);
                             break;
                         case XSConstants.MODEL_GROUP:
                             XSModelGroup subGroup = (XSModelGroup) term;
-                            collectFields(subGroup);
+                            collectElementFields(subGroup);
                             break;
                         default:
                             throw new UnsupportedOperationException("Unsupported term type " + term.getType());
                     }
                 }
             }
-        }.collectFields(group);
+        }.collectElementFields(group);
+
+        XSObjectList attrUses = type.getAttributeUses();
+        for (int i = 0; i < attrUses.getLength(); i++) {
+            XSAttributeUse attrUse = (XSAttributeUse) attrUses.item(i);
+            XSAttributeDeclaration attrDecl = attrUse.getAttrDeclaration();
+
+            Record.Field field = createField(attrDecl.getName(), attrDecl.getTypeDefinition());
+            fields.put(field.getName(), field);
+        }
 
         return new ArrayList<>(fields.values());
     }
 
-    private Record.Field createField(XSElementDeclaration el) {
-        XSTypeDefinition type = el.getTypeDefinition();
-
+    private Record.Field createField(String name, XSTypeDefinition type) {
         boolean simple = type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
         Datum.Type fieldType;
 
@@ -181,7 +190,7 @@ public class Schema {
             if (fieldType == null) fieldType = createRecord((XSComplexTypeDefinition) type);
         }
 
-        return new Record.Field(el.getName(), fieldType);
+        return new Record.Field(name, fieldType);
     }
 
     private static class ErrorHandler implements XMLErrorHandler {

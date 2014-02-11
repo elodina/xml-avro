@@ -51,4 +51,30 @@ public class ConverterTest {
         assertEquals("s", record.getValue("s"));
         assertEquals(1.0, record.getValue("d"));
     }
+
+    @Test
+    public void attributes() throws SAXException {
+        String xsd =
+                "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
+                "   <xsd:element name='user'>" +
+                "     <xsd:complexType>" +
+                "       <xsd:sequence>" +
+                "         <xsd:element name='name' type='xsd:string'/>" +
+                "       </xsd:sequence>" +
+                "       <xsd:attribute name='id' type='xsd:string'/>" +
+                "     </xsd:complexType>" +
+                "   </xsd:element>" +
+                "</xsd:schema>";
+
+        String xml =
+                "<user id='id'>" +
+                "  <name>name</name>" +
+                "</user>";
+
+        Converter converter = new Converter(new Schema(xsd));
+        Record record = converter.convert(xml);
+
+        assertEquals("id", record.getValue("id"));
+        assertEquals("name", record.getValue("name"));
+    }
 }

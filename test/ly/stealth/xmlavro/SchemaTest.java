@@ -111,4 +111,27 @@ public class SchemaTest {
         Record.Type subRecord = field.getType();
         assertSame(record, subRecord);
     }
+
+    @Test
+    public void complexTypeAttributes() {
+        String xsd =
+                "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xsd:complexType name='type'>" +
+                "    <xsd:sequence>" +
+                "      <xsd:element name='element' type='xsd:string'/>" +
+                "    </xsd:sequence>" +
+                "    <xsd:attribute name='attribute' type='xsd:string'/>" +
+                "  </xsd:complexType>" +
+                "</xsd:schema>";
+
+        Record.Type record = new Schema(xsd).getNamedType("type");
+        assertEquals(2, record.getFields().size());
+        assertNotNull(record.getField("element"));
+
+        Record.Field attrField = record.getField("attribute");
+        assertNotNull(attrField);
+
+        assertEquals("attribute", attrField.getName());
+        assertEquals(Value.Type.STRING, attrField.getType());
+    }
 }
