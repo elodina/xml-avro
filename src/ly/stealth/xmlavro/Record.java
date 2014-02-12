@@ -42,7 +42,7 @@ public class Record implements Datum {
         return record;
     }
 
-    public static class Type implements Datum.Type {
+    public static class Type extends Datum.Type {
         private QName qName;
         private List<Field> fields = new ArrayList<>();
 

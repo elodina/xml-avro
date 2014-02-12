@@ -11,7 +11,7 @@ import org.w3c.dom.ls.LSInput;
 import java.io.*;
 import java.util.*;
 
-public class Schema {
+public class TypeBuilder {
     private static XSModel parse(File file) throws IOException {
         try (InputStream stream = new FileInputStream(file)) {
             return parse(stream);
@@ -44,75 +44,48 @@ public class Schema {
     }
 
     private XSModel schema;
+    private QName rootElementQName;
 
     // Type by QName, where QName:
     // - QName of type for named types
     // - QName of element for anonymous or simple types of root elements
     private Map<QName, Datum.Type> types = new LinkedHashMap<>();
 
-    public Schema(String xsd) { this(parse(new StringReader(xsd))); }
+    public TypeBuilder(String xsd) { this(parse(new StringReader(xsd))); }
 
-    public Schema(File file) throws IOException { this(parse(file)); }
+    public TypeBuilder(File file) throws IOException { this(parse(file)); }
 
-    public Schema(Reader reader) { this(parse(reader)); }
-    public Schema(InputStream stream) { this(parse(stream)); }
+    public TypeBuilder(Reader reader) { this(parse(reader)); }
+    public TypeBuilder(InputStream stream) { this(parse(stream)); }
 
-    private Schema(XSModel schema) {
-        this.schema = schema;
-        initTypes();
-    }
+    private TypeBuilder(XSModel schema) { this.schema = schema; }
 
-    public <T extends Datum.Type> T getRootType(String name) { return getRootType(new QName(name)); }
+    public QName getRootElementQName() { return rootElementQName; }
+    public void setRootElementQName(QName rootElementQName) { this.rootElementQName = rootElementQName; }
+
 
     @SuppressWarnings("unchecked")
-    public <T extends Datum.Type> T getRootType(QName rootQName) {
-        XSElementDeclaration el = schema.getElementDeclaration(rootQName.getName(), rootQName.getNamespace());
-        if (el == null) throw new IllegalArgumentException("Root element definition " + rootQName + " not found");
+    public <T extends Datum.Type> T createType() {
+        XSElementDeclaration el = getRootElement();
 
         XSTypeDefinition type = el.getTypeDefinition();
-        boolean anonymousOrSimple = type.getAnonymous() || type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
-        QName name = anonymousOrSimple ? new QName(el.getName(), el.getNamespace()) : new QName(type.getName(), type.getNamespace());
 
-        return (T) types.get(name);
+        types.clear();
+        return (T) createType(type);
     }
 
-    public <T extends Datum.Type> T getNamedType(String name) { return getNamedType(new QName(name)); }
-
-    @SuppressWarnings("unchecked")
-    public <T extends Datum.Type> T getNamedType(QName qName) {
-        return (T) types.get(qName);
-    }
-
-    public void write(QName rootQName, File file) throws IOException {
-        try (Writer writer = new OutputStreamWriter(new FileOutputStream(file), "UTF-8")) {
-            save(rootQName, writer);
-        }
-    }
-
-    public void save(QName rootQName, Writer writer) throws IOException {
-        Datum.Type type = getRootType(rootQName);
-        org.apache.avro.Schema schema = type.toAvroSchema();
-        writer.write(schema.toString(true));
-    }
-
-    private void initTypes() {
-        XSNamedMap typeMap = schema.getComponents(XSConstants.TYPE_DEFINITION);
-        for (int i = 0; i < typeMap.getLength(); i++) {
-            XSTypeDefinition xmlType = (XSTypeDefinition) typeMap.item(i);
-            if ("http://www.w3.org/2001/XMLSchema".equals(xmlType.getNamespace())) continue;
-
-            Datum.Type type = createType(xmlType);
-            if (!type.isAnonymous()) types.put(type.getQName(), type);
+    private XSElementDeclaration getRootElement() {
+        if (rootElementQName != null) {
+            XSElementDeclaration el = schema.getElementDeclaration(rootElementQName.getName(), rootElementQName.getNamespace());
+            if (el == null) throw new IllegalStateException("Root element declaration " + rootElementQName + " not found");
+            return el;
         }
 
         XSNamedMap elMap = schema.getComponents(XSConstants.ELEMENT_DECLARATION);
-        for (int i = 0; i < elMap.getLength(); i++) {
-            XSElementDeclaration el = (XSElementDeclaration) elMap.item(i);
-            Datum.Type type = createType(el.getTypeDefinition());
+        if (elMap.getLength() == 0) throw new IllegalStateException("No root element declaration");
+        if (elMap.getLength() > 1) throw new IllegalStateException("Ambiguous root element declarations");
 
-            if (type.isAnonymous() || type.isPrimitive())
-                types.put(new QName(el.getName(), el.getNamespace()), type);
-        }
+        return (XSElementDeclaration) elMap.item(0);
     }
 
     private Datum.Type createType(XSTypeDefinition type) {
@@ -189,7 +162,7 @@ public class Schema {
 
         if (simple) fieldType = Value.Type.valueOf((XSSimpleTypeDefinition) type);
         else {
-            fieldType = getNamedType(new QName(type.getName(), type.getNamespace()));
+            fieldType = types.get(new QName(type.getName(), type.getNamespace()));
             if (fieldType == null) fieldType = createRecord((XSComplexTypeDefinition) type);
         }
 

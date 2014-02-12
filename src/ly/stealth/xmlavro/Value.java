@@ -19,15 +19,15 @@ public class Value implements Datum {
 
     public Object toAvroDatum() { return getObject(); }
 
-    public static enum Type implements Datum.Type {
-        NULL,       // no value
-        BOOLEAN,    // a binary value
-        INT,        // 32-bit signed integer
-        LONG,       // 64-bit signed integer
-        FLOAT,      // single precision (32-bit) IEEE 754 floating-point number
-        DOUBLE,     // double precision (64-bit) IEEE 754 floating-point number
-        BYTES,      // sequence of 8-bit unsigned bytes
-        STRING;     // unicode character sequence
+    public static class Type extends Datum.Type {
+        public static final Type NULL = new Type("null", Schema.Type.NULL);
+        public static final Type BOOLEAN = new Type("boolean", Schema.Type.BOOLEAN);
+        public static final Type INT = new Type("int", Schema.Type.INT);
+        public static final Type LONG = new Type("long", Schema.Type.LONG);
+        public static final Type FLOAT = new Type("float", Schema.Type.FLOAT);
+        public static final Type DOUBLE = new Type("double", Schema.Type.DOUBLE);
+        public static final Type BYTES = new Type("bytes", Schema.Type.BYTES);
+        public static final Type STRING = new Type("string", Schema.Type.STRING);
 
         static Type valueOf(XSSimpleTypeDefinition type) {
             switch (type.getBuiltInKind()) {
@@ -40,8 +40,16 @@ public class Value implements Datum {
             }
         }
 
+        private String name;
+        private Schema.Type avroType;
+
+        private Type(String name, Schema.Type avroType) {
+            this.name = name;
+            this.avroType = avroType;
+        }
+
         @Override
-        public QName getQName() { return new QName(name()); }
+        public QName getQName() { return new QName(name); }
 
         @Override
         public boolean isAnonymous() { return false; }
@@ -49,32 +57,7 @@ public class Value implements Datum {
         @Override
         public boolean isPrimitive() { return true; }
 
-        private Schema.Type toAvroType() {
-            switch (this) {
-                case NULL:
-                    return Schema.Type.NULL;
-                case BOOLEAN:
-                    return Schema.Type.BOOLEAN;
-                case INT:
-                    return Schema.Type.INT;
-                case LONG:
-                    return Schema.Type.LONG;
-                case FLOAT:
-                    return Schema.Type.FLOAT;
-                case DOUBLE:
-                    return Schema.Type.DOUBLE;
-                case BYTES:
-                    return Schema.Type.BYTES;
-                case STRING:
-                    return Schema.Type.STRING;
-                default:
-                    throw new UnsupportedOperationException("Unsupported type " + this);
-            }
-        }
-
         @Override
-        public Schema toAvroSchema() {
-            return Schema.create(toAvroType());
-        }
+        public Schema toAvroSchema() { return Schema.create(avroType); }
     }
 }

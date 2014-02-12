@@ -15,7 +15,7 @@ public class ConverterTest {
 
         String xml = "<i>1</i>";
 
-        Converter converter = new Converter(new Schema(xsd));
+        Converter converter = new Converter(new TypeBuilder(xsd).createType());
         Value value = converter.convert(xml);
 
         assertEquals(Value.Type.INT, value.getType());
@@ -44,7 +44,7 @@ public class ConverterTest {
                 "  <d>1.0</d>" +
                 "</root>";
 
-        Converter converter = new Converter(new Schema(xsd));
+        Converter converter = new Converter(new TypeBuilder(xsd).createType());
         Record record = converter.convert(xml);
         Record.Type type = record.getType();
 
@@ -72,11 +72,11 @@ public class ConverterTest {
                 "  <name>name</name>" +
                 "</user>";
 
-        Converter converter = new Converter(new Schema(xsd));
+        Converter converter = new Converter(new TypeBuilder(xsd).createType());
         Record record = converter.convert(xml);
         Record.Type type = record.getType();
 
-        assertEquals("id", record.getValue(type.getField("id")));
+        assertEquals("id", record.getValue(type.getField("id", true)));
         assertEquals("name", record.getValue(type.getField("name")));
     }
 
@@ -95,8 +95,8 @@ public class ConverterTest {
 
         String xml = "<root field='value0'><field>value</field></root>";
 
-        Schema schema = new Schema(xsd);
-        Record record = new Converter(schema).convert(xml);
+        TypeBuilder typeBuilder = new TypeBuilder(xsd);
+        Record record = new Converter(typeBuilder.createType()).convert(xml);
         Record.Type type = record.getType();
 
         assertEquals("value", record.getValue(type.getField("field")));

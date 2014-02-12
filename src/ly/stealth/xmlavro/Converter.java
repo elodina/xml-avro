@@ -13,10 +13,10 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 
 public class Converter {
-    private Schema schema;
+    private Datum.Type type;
 
-    public Converter(Schema schema) {
-        this.schema = schema;
+    public Converter(Datum.Type type) {
+        this.type = type;
     }
 
     public void convert(File inputFile, File outputFile) throws IOException, SAXException {
@@ -54,7 +54,6 @@ public class Converter {
     }
 
     public <D extends Datum> D convert(Element el) {
-        Datum.Type type = schema.getRootType(new QName(el.getTagName(), el.getNamespaceURI()));
         return createDatum(type, el);
     }
 
@@ -100,21 +99,24 @@ public class Converter {
     }
 
     private  Object parseValue(Value.Type type, String text) {
-        switch (type) {
-            case BOOLEAN:
-                return "true".equals(text) || "1".equals(text);
-            case INT:
-                return Integer.parseInt(text);
-            case LONG:
-                return Long.parseLong(text);
-            case FLOAT:
-                return Float.parseFloat(text);
-            case DOUBLE:
-                return Double.parseDouble(text);
-            case STRING:
-                return text;
-            default:
-                throw new UnsupportedOperationException("Unsupported type " + type);
-        }
+        if (type == Value.Type.BOOLEAN)
+            return "true".equals(text) || "1".equals(text);
+
+        if (type == Value.Type.INT)
+            return Integer.parseInt(text);
+
+        if (type == Value.Type.LONG)
+            return Long.parseLong(text);
+
+        if (type == Value.Type.FLOAT)
+            return Float.parseFloat(text);
+
+        if (type == Value.Type.DOUBLE)
+            return Double.parseDouble(text);
+
+        if (type == Value.Type.STRING)
+            return text;
+
+        throw new UnsupportedOperationException("Unsupported type " + type);
     }
 }

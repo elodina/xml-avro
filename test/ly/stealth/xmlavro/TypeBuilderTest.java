@@ -5,17 +5,17 @@ import org.junit.Test;
 
 import static junit.framework.Assert.*;
 
-public class SchemaTest {
+public class TypeBuilderTest {
     @Test
     public void basic() {
         String xsd = "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
                      "  <xsd:element name='root' type='xsd:string'/>" +
                      "</xsd:schema>";
 
-        new Schema(xsd);
+        new TypeBuilder(xsd);
 
         try { // no namespace
-            new Schema("<schema/>");
+            new TypeBuilder("<schema/>");
             fail();
         } catch (XMLParseException e) {
             String message = e.getMessage();
@@ -31,8 +31,8 @@ public class SchemaTest {
                 "   <xsd:element name='i' type='xsd:int'/>" +
                 "</xsd:schema>";
 
-        Schema schema = new Schema(xsd);
-        assertEquals(Value.Type.INT, schema.getRootType("i"));
+        TypeBuilder typeBuilder = new TypeBuilder(xsd);
+        assertEquals(Value.Type.INT, typeBuilder.createType());
     }
 
     @Test
@@ -48,9 +48,9 @@ public class SchemaTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Schema schema = new Schema(xsd);
+        TypeBuilder typeBuilder = new TypeBuilder(xsd);
 
-        Record.Type record = schema.getRootType("root");
+        Record.Type record = typeBuilder.createType();
         assertEquals(new QName("type"), record.getQName());
 
         assertEquals(2, record.getFields().size());
@@ -81,9 +81,9 @@ public class SchemaTest {
                 "  <xsd:element name='root' type='outer'/>" +
                 "</xsd:schema>";
 
-        Schema schema = new Schema(xsd);
+        TypeBuilder typeBuilder = new TypeBuilder(xsd);
 
-        Record.Type record = schema.getRootType("root");
+        Record.Type record = typeBuilder.createType();
         assertEquals(new QName("outer"), record.getQName());
 
         Record.Field innerField = record.getField("inner");
@@ -105,7 +105,7 @@ public class SchemaTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = new Schema(xsd).getRootType("root");
+        Record.Type record = new TypeBuilder(xsd).createType();
 
         Record.Field field = record.getField("node");
         Record.Type subRecord = field.getType();
@@ -122,13 +122,14 @@ public class SchemaTest {
                 "    </xsd:sequence>" +
                 "    <xsd:attribute name='attribute' type='xsd:string'/>" +
                 "  </xsd:complexType>" +
+                "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = new Schema(xsd).getNamedType("type");
+        Record.Type record = new TypeBuilder(xsd).createType();
         assertEquals(2, record.getFields().size());
         assertNotNull(record.getField("element"));
 
-        Record.Field attrField = record.getField("attribute");
+        Record.Field attrField = record.getField("attribute", true);
         assertNotNull(attrField);
 
         assertEquals("attribute", attrField.getAvroName());
@@ -145,10 +146,11 @@ public class SchemaTest {
                 "    </xsd:sequence>" +
                 "    <xsd:attribute name='field' type='xsd:string'/>" +
                 "  </xsd:complexType>" +
+                "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Schema schema = new Schema(xsd);
-        Record.Type type = schema.getNamedType("type");
+        TypeBuilder typeBuilder = new TypeBuilder(xsd);
+        Record.Type type = typeBuilder.createType();
 
         assertEquals(2, type.getFields().size());
         Record.Field field = type.getField("field");
