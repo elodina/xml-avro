@@ -77,19 +77,23 @@ public class Converter {
             if (node.getNodeType() != Node.ELEMENT_NODE) continue;
 
             Element child = (Element) node;
-            Record.Field field = type.getField(child.getTagName());
+            QName qName = new QName(child.getTagName(), child.getNamespaceURI());
+            Record.Field field = type.getField(qName);
 
             Datum datum = createDatum(field.getType(), child);
-            record.datums.put(field.getName(), datum);
+            record.setDatum(field, datum);
         }
 
         NamedNodeMap attrMap = el.getAttributes();
         for (int i = 0; i < attrMap.getLength(); i++) {
             Attr attr = (Attr) attrMap.item(i);
-            Record.Field field = type.getField(attr.getName());
+            if (attr.getName().contains(":")) continue; // skip xmlns declarations
+
+            QName qName = new QName(attr.getName(), attr.getNamespaceURI());
+            Record.Field field = type.getField(qName, true);
 
             Value value = createValue((Value.Type) field.getType(), attr.getValue());
-            record.datums.put(attr.getName(), value);
+            record.setDatum(field, value);
         }
 
         return record;

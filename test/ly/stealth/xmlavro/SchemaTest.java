@@ -56,11 +56,11 @@ public class SchemaTest {
         assertEquals(2, record.getFields().size());
 
         Record.Field field0 = record.getFields().get(0);
-        assertEquals("s", field0.getName());
+        assertEquals("s", field0.getAvroName());
         assertEquals(Value.Type.STRING, field0.getType());
 
         Record.Field field1 = record.getFields().get(1);
-        assertEquals("i", field1.getName());
+        assertEquals("i", field1.getAvroName());
         assertEquals(Value.Type.INT, field1.getType());
     }
 
@@ -131,7 +131,30 @@ public class SchemaTest {
         Record.Field attrField = record.getField("attribute");
         assertNotNull(attrField);
 
-        assertEquals("attribute", attrField.getName());
+        assertEquals("attribute", attrField.getAvroName());
         assertEquals(Value.Type.STRING, attrField.getType());
+    }
+
+    @Test
+    public void uniqueFieldNames() {
+        String xsd =
+                "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xsd:complexType name='type'>" +
+                "    <xsd:sequence>" +
+                "      <xsd:element name='field' type='xsd:string'/>" +
+                "    </xsd:sequence>" +
+                "    <xsd:attribute name='field' type='xsd:string'/>" +
+                "  </xsd:complexType>" +
+                "</xsd:schema>";
+
+        Schema schema = new Schema(xsd);
+        Record.Type type = schema.getNamedType("type");
+
+        assertEquals(2, type.getFields().size());
+        Record.Field field = type.getField("field");
+        assertEquals("field", field.getAvroName());
+
+        Record.Field field0 = type.getField("field", true);
+        assertEquals("field0", field0.getAvroName());
     }
 }

@@ -46,10 +46,11 @@ public class ConverterTest {
 
         Converter converter = new Converter(new Schema(xsd));
         Record record = converter.convert(xml);
+        Record.Type type = record.getType();
 
-        assertEquals(1, record.getValue("i"));
-        assertEquals("s", record.getValue("s"));
-        assertEquals(1.0, record.getValue("d"));
+        assertEquals(1, record.getValue(type.getField("i")));
+        assertEquals("s", record.getValue(type.getField("s")));
+        assertEquals(1.0, record.getValue(type.getField("d")));
     }
 
     @Test
@@ -73,8 +74,32 @@ public class ConverterTest {
 
         Converter converter = new Converter(new Schema(xsd));
         Record record = converter.convert(xml);
+        Record.Type type = record.getType();
 
-        assertEquals("id", record.getValue("id"));
-        assertEquals("name", record.getValue("name"));
+        assertEquals("id", record.getValue(type.getField("id")));
+        assertEquals("name", record.getValue(type.getField("name")));
+    }
+
+    @Test
+    public void uniqueFieldNames() throws SAXException {
+        String xsd =
+                "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xsd:complexType name='type'>" +
+                "    <xsd:sequence>" +
+                "      <xsd:element name='field' type='xsd:string'/>" +
+                "    </xsd:sequence>" +
+                "    <xsd:attribute name='field' type='xsd:string'/>" +
+                "  </xsd:complexType>" +
+                "  <xsd:element name='root' type='type'/>" +
+                "</xsd:schema>";
+
+        String xml = "<root field='value0'><field>value</field></root>";
+
+        Schema schema = new Schema(xsd);
+        Record record = new Converter(schema).convert(xml);
+        Record.Type type = record.getType();
+
+        assertEquals("value", record.getValue(type.getField("field")));
+        assertEquals("value0", record.getValue(type.getField("field", true)));
     }
 }

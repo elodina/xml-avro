@@ -128,12 +128,12 @@ public class Schema {
         Record.Type record = new Record.Type(qName);
         if (qName != null) types.put(qName, record);
 
-        record.fields.addAll(createFields(type));
+        record.setFields(createFields(type));
         return record;
     }
 
     private List<Record.Field> createFields(XSComplexTypeDefinition type) {
-        final Map<String, Record.Field> fields = new LinkedHashMap<>();
+        final Map<Record.Origin, Record.Field> fields = new LinkedHashMap<>();
 
         XSParticle particle = type.getParticle();
         if (particle == null) return new ArrayList<>(fields.values());
@@ -154,8 +154,8 @@ public class Schema {
                     switch (term.getType()) {
                         case XSConstants.ELEMENT_DECLARATION:
                             XSElementDeclaration el = (XSElementDeclaration) term;
-                            Record.Field field = createField(el.getName(), el.getTypeDefinition());
-                            fields.put(field.getName(), field);
+                            Record.Field field = createField(el, el.getTypeDefinition());
+                            fields.put(field.getOrigin(), field);
                             break;
                         case XSConstants.MODEL_GROUP:
                             XSModelGroup subGroup = (XSModelGroup) term;
@@ -171,16 +171,19 @@ public class Schema {
         XSObjectList attrUses = type.getAttributeUses();
         for (int i = 0; i < attrUses.getLength(); i++) {
             XSAttributeUse attrUse = (XSAttributeUse) attrUses.item(i);
-            XSAttributeDeclaration attrDecl = attrUse.getAttrDeclaration();
+            XSAttributeDeclaration attr = attrUse.getAttrDeclaration();
 
-            Record.Field field = createField(attrDecl.getName(), attrDecl.getTypeDefinition());
-            fields.put(field.getName(), field);
+            Record.Field field = createField(attr, attr.getTypeDefinition());
+            fields.put(field.getOrigin(), field);
         }
 
         return new ArrayList<>(fields.values());
     }
 
-    private Record.Field createField(String name, XSTypeDefinition type) {
+    private Record.Field createField(XSObject originObj, XSTypeDefinition type) {
+        if (!Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION).contains(originObj.getType()))
+            throw new IllegalArgumentException("Invalid origin object type " + originObj.getType());
+
         boolean simple = type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
         Datum.Type fieldType;
 
@@ -190,7 +193,10 @@ public class Schema {
             if (fieldType == null) fieldType = createRecord((XSComplexTypeDefinition) type);
         }
 
-        return new Record.Field(name, fieldType);
+        QName qName = new QName(originObj.getName(), originObj.getNamespace());
+        boolean attribute = originObj.getType() == XSConstants.ATTRIBUTE_DECLARATION;
+
+        return new Record.Field(new Record.Origin(qName, attribute), fieldType);
     }
 
     private static class ErrorHandler implements XMLErrorHandler {
