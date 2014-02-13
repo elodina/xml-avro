@@ -102,7 +102,7 @@ public class ConverterTest {
         GenericData.Record child = (GenericData.Record) record.get("node");
         assertEquals(record.getSchema(), child.getSchema());
 
-        assertNull(record.get("node"));
+        assertNull(child.get("node"));
     }
 
     @Test
