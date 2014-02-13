@@ -200,4 +200,14 @@ public class ConverterTest {
         assertEquals("field0", map.get("field0"));
         assertEquals("field1", map.get("field1"));
     }
+
+    @Test
+    public void SchemaBuilder_validaName() {
+        assertEquals("", Converter.SchemaBuilder.validName(""));
+
+        assertEquals("a1", Converter.SchemaBuilder.validName("$a#1"));
+
+        assertEquals("a_1", Converter.SchemaBuilder.validName("a.1"));
+        assertEquals("a_1", Converter.SchemaBuilder.validName("a-1"));
+    }
 }

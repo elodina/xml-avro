@@ -8,6 +8,9 @@ import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
 import com.sun.org.apache.xerces.internal.xs.*;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.apache.avro.io.DatumWriter;
+import org.apache.avro.io.EncoderFactory;
+import org.apache.avro.specific.SpecificDatumWriter;
 import org.w3c.dom.*;
 import org.w3c.dom.ls.LSInput;
 import org.xml.sax.InputSource;
@@ -217,16 +220,45 @@ public class Converter {
 
             boolean attribute = source.getType() == XSConstants.ATTRIBUTE_DECLARATION;
 
-            int duplicates = 0;
-            for (Schema.Field field : fields)
-                if (field.name().equals(source.getName()))
-                    duplicates++;
-            String name = source.getName() + (duplicates > 0 ? duplicates - 1 : "");
+            String name = validName(source.getName());
 
-            Schema.Field field = new Schema.Field(name, fieldType, null, null);
+            int duplicates = 0;
+            for (Schema.Field field : fields) {
+                if (field.name().equals(name))
+                    duplicates++;
+            }
+            String uniqueName = name + (duplicates > 0 ? duplicates - 1 : "");
+
+            Schema.Field field = new Schema.Field(uniqueName, fieldType, null, null);
             field.addProp(SOURCE, "" + new Source(source.getName(), attribute));
 
             return field;
+        }
+
+        static String validName(String name) {
+            char[] chars = name.toCharArray();
+            char[] result = new char[chars.length];
+
+            int p = 0;
+            for (char c : chars) {
+                boolean valid =
+                        c >= 'a' && c <= 'z' ||
+                        c >= 'A' && c <= 'z' ||
+                        c >= '0' && c <= '9' ||
+                        c == '_';
+
+                boolean separator = c == '.' || c == '-';
+
+                if (valid) {
+                    result[p] = c;
+                    p++;
+                } else if (separator) {
+                    result[p] = '_';
+                    p++;
+                }
+            }
+
+            return new String(result, 0, p);
         }
 
         private static class ErrorHandler implements XMLErrorHandler {
@@ -443,5 +475,40 @@ public class Converter {
         public String toString() {
             return (attribute ? "attribute" : "element") + " " + name;
         }
+    }
+
+    public static void main(String[] args) throws IOException {
+        if (args.length < 2 || args.length > 4) {
+            System.out.println("XML Avro converter.\nUsage: <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}\n");
+            return;
+        }
+
+        File xsdFile = new File(args[0]);
+        File xmlFile = new File(args[1]);
+
+        File avscFile = args.length > 2 ? new File(args[3]) : replaceExtension(xsdFile, "avsc");
+        File avroFile = args.length > 3 ? new File(args[4]) : replaceExtension(xmlFile, "avro");
+
+        System.out.println("converting: \n" + xsdFile + " -> " + avscFile + "\n" + xmlFile + " -> " + avroFile);
+
+        Schema schema = createSchema(xsdFile);
+        try (Writer writer = new FileWriter(avscFile)) {
+            writer.write(schema.toString(true));
+        }
+
+        Object datum = createDatum(schema, xmlFile);
+        try (OutputStream stream = new FileOutputStream(avroFile)) {
+            DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
+            datumWriter.write(datum, EncoderFactory.get().directBinaryEncoder(stream, null));
+        }
+    }
+
+    private static File replaceExtension(File file, String newExtension) {
+        String fileName = file.getPath();
+
+        int dotIdx = fileName.lastIndexOf('.');
+        if (dotIdx != -1) fileName = fileName.substring(0, dotIdx);
+
+        return new File(fileName + "." + newExtension);
     }
 }
