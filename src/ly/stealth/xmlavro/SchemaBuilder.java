@@ -6,15 +6,22 @@ import com.sun.org.apache.xerces.internal.xni.XNIException;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLErrorHandler;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
 import com.sun.org.apache.xerces.internal.xs.*;
+import org.apache.avro.Schema;
 import org.w3c.dom.ls.LSInput;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
+import java.util.*;
 
-public class TypeBuilder {
+public class SchemaBuilder {
+    public static final String SOURCE = "source";
+    public static final String OTHERS = "others";
+
+    public static Schema createSchema(String xsd) { return new SchemaBuilder(xsd).createSchema(); }
+    public static Schema createSchema(File file) throws IOException { return new SchemaBuilder(file).createSchema(); }
+    public static Schema createSchema(Reader reader) { return new SchemaBuilder(reader).createSchema(); }
+    public static Schema createSchema(InputStream stream) { return new SchemaBuilder(stream).createSchema(); }
+
+
     private static XSModel parse(File file) throws IOException {
         try (InputStream stream = new FileInputStream(file)) {
             return parse(stream);
@@ -47,40 +54,39 @@ public class TypeBuilder {
     }
 
     private XSModel schema;
-    private QName rootElementQName;
+    private String rootElementName;
 
     // Type by QName, where QName:
     // - QName of type for named types
     // - QName of element for anonymous or simple types of root elements
-    private java.util.Map<QName, Datum.Type> types = new LinkedHashMap<>();
+    private Map<String, Schema> types = new LinkedHashMap<>();
 
-    public TypeBuilder(String xsd) { this(parse(new StringReader(xsd))); }
+    public SchemaBuilder(String xsd) { this(parse(new StringReader(xsd))); }
 
-    public TypeBuilder(File file) throws IOException { this(parse(file)); }
+    public SchemaBuilder(File file) throws IOException { this(parse(file)); }
 
-    public TypeBuilder(Reader reader) { this(parse(reader)); }
-    public TypeBuilder(InputStream stream) { this(parse(stream)); }
+    public SchemaBuilder(Reader reader) { this(parse(reader)); }
+    public SchemaBuilder(InputStream stream) { this(parse(stream)); }
 
-    private TypeBuilder(XSModel schema) { this.schema = schema; }
+    private SchemaBuilder(XSModel schema) { this.schema = schema; }
 
-    public QName getRootElementQName() { return rootElementQName; }
-    public void setRootElementQName(QName rootElementQName) { this.rootElementQName = rootElementQName; }
+    public String getRootElementName() { return rootElementName; }
+    public void setRootElementName(String rootElementName) { this.rootElementName = rootElementName; }
 
 
     @SuppressWarnings("unchecked")
-    public <T extends Datum.Type> T createType() {
+    public Schema createSchema() {
         XSElementDeclaration el = getRootElement();
-
         XSTypeDefinition type = el.getTypeDefinition();
 
         types.clear();
-        return (T) createType(type);
+        return createType(type);
     }
 
     private XSElementDeclaration getRootElement() {
-        if (rootElementQName != null) {
-            XSElementDeclaration el = schema.getElementDeclaration(rootElementQName.getName(), rootElementQName.getNamespace());
-            if (el == null) throw new IllegalStateException("Root element declaration " + rootElementQName + " not found");
+        if (rootElementName != null) {
+            XSElementDeclaration el = schema.getElementDeclaration(rootElementName, null);
+            if (el == null) throw new IllegalStateException("Root element declaration " + rootElementName + " not found");
             return el;
         }
 
@@ -91,25 +97,36 @@ public class TypeBuilder {
         return (XSElementDeclaration) elMap.item(0);
     }
 
-    private Datum.Type createType(XSTypeDefinition type) {
+    private Schema createType(XSTypeDefinition type) {
         if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
-            return Value.Type.valueOf((XSSimpleTypeDefinition) type);
+            return Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
         else
             return createRecord((XSComplexTypeDefinition) type);
     }
 
-    private Record.Type createRecord(XSComplexTypeDefinition type) {
-        QName qName = !type.getAnonymous() ? new QName(type.getName(), type.getNamespace()) : null;
+    private Schema.Type getPrimitiveType(XSSimpleTypeDefinition type) {
+        switch (type.getBuiltInKind()) {
+            case XSConstants.BOOLEAN_DT: return Schema.Type.BOOLEAN;
+            case XSConstants.INT_DT: return Schema.Type.INT;
+            case XSConstants.LONG_DT: return Schema.Type.LONG;
+            case XSConstants.FLOAT_DT: return Schema.Type.FLOAT;
+            case XSConstants.DOUBLE_DT: return Schema.Type.DOUBLE;
+            default: return Schema.Type.STRING;
+        }
+    }
 
-        Record.Type record = new Record.Type(qName);
-        if (qName != null) types.put(qName, record);
+    private Schema createRecord(XSComplexTypeDefinition type) {
+        String name = type.getName();
+
+        Schema record = Schema.createRecord(name, null, null, false);
+        if (name != null) types.put(name, record);
 
         record.setFields(createFields(type));
         return record;
     }
 
-    private List<Record.Field> createFields(XSComplexTypeDefinition type) {
-        final java.util.Map<Record.Source, Record.Field> fields = new LinkedHashMap<>();
+    private List<Schema.Field> createFields(XSComplexTypeDefinition type) {
+        final Map<String, Schema.Field> fields = new LinkedHashMap<>();
 
         XSParticle particle = type.getParticle();
         if (particle == null) return new ArrayList<>(fields.values());
@@ -130,16 +147,16 @@ public class TypeBuilder {
                     switch (term.getType()) {
                         case XSConstants.ELEMENT_DECLARATION:
                             XSElementDeclaration el = (XSElementDeclaration) term;
-                            Record.Field field = createField(el, el.getTypeDefinition());
-                            fields.put(field.getSource(), field);
+                            Schema.Field field = createField(fields.values(), el, el.getTypeDefinition());
+                            fields.put(field.getProp(SOURCE), field);
                             break;
                         case XSConstants.MODEL_GROUP:
                             XSModelGroup subGroup = (XSModelGroup) term;
                             collectElementFields(subGroup);
                             break;
                         case XSConstants.WILDCARD:
-                            field = createField(term, null);
-                            fields.put(field.getSource(), field);
+                            field = createField(fields.values(), term, null);
+                            fields.put(field.getProp(SOURCE), field);
                             break;
                         default:
                             throw new UnsupportedOperationException("Unsupported term type " + term.getType());
@@ -153,35 +170,45 @@ public class TypeBuilder {
             XSAttributeUse attrUse = (XSAttributeUse) attrUses.item(i);
             XSAttributeDeclaration attr = attrUse.getAttrDeclaration();
 
-            Record.Field field = createField(attr, attr.getTypeDefinition());
-            fields.put(field.getSource(), field);
+            Schema.Field field = createField(fields.values(), attr, attr.getTypeDefinition());
+            fields.put(field.getProp(SOURCE), field);
         }
 
         return new ArrayList<>(fields.values());
     }
 
-    private Record.Field createField(XSObject source, XSTypeDefinition type) {
+    private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type) {
         List<Short> types = Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION, XSConstants.WILDCARD);
         if (!types.contains(source.getType()))
             throw new IllegalArgumentException("Invalid origin object type " + source.getType());
 
         boolean wildcard = source.getType() == XSConstants.WILDCARD;
-        if (wildcard) return new Record.Field(new Record.Source(null, false), new Map.Type(Value.Type.STRING));
+        if (wildcard) {
+            Schema map = Schema.createMap(Schema.create(Schema.Type.STRING));
+            return new Schema.Field(OTHERS, map, null, null);
+        }
 
         boolean simple = type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
-        Datum.Type fieldType;
+        Schema fieldType;
 
-        if (simple) fieldType = Value.Type.valueOf((XSSimpleTypeDefinition) type);
+        if (simple) fieldType = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
         else {
-            QName qName = !type.getAnonymous() ? new QName(type.getName(), type.getNamespace()) : null;
-            fieldType = this.types.get(qName);
+            fieldType = this.types.get(type.getName());
             if (fieldType == null) fieldType = createRecord((XSComplexTypeDefinition) type);
         }
 
-        QName qName = new QName(source.getName(), source.getNamespace());
         boolean attribute = source.getType() == XSConstants.ATTRIBUTE_DECLARATION;
 
-        return new Record.Field(new Record.Source(qName, attribute), fieldType);
+        int duplicates = 0;
+        for (Schema.Field field : fields)
+            if (field.name().equals(source.getName()))
+                duplicates++;
+        String name = source.getName() + (duplicates > 0 ? duplicates - 1 : "");
+
+        Schema.Field field = new Schema.Field(name, fieldType, null, null);
+        field.addProp(SOURCE, "" + new Source(source.getName(), attribute));
+
+        return field;
     }
 
     private static class ErrorHandler implements XMLErrorHandler {
@@ -200,6 +227,37 @@ public class TypeBuilder {
         @Override
         public void fatalError(String domain, String key, XMLParseException exception) throws XNIException {
             if (this.exception == null) this.exception = exception;
+        }
+    }
+
+    public static class Source {
+        // name of element/attribute
+        private String name;
+        // element or attribute
+        private boolean attribute;
+
+        public Source(String name) { this(name, false); }
+
+        public Source(String name, boolean attribute) {
+            this.name = name;
+            this.attribute = attribute;
+        }
+
+        public String getName() { return name; }
+
+        public boolean isElement() { return !isAttribute(); }
+        public boolean isAttribute() { return attribute; }
+
+        public int hashCode() { return Objects.hash(name, attribute); }
+
+        public boolean equals(Object obj) {
+            if (!(obj instanceof Source)) return false;
+            Source source = (Source) obj;
+            return name.equals(source.name) && attribute == source.attribute;
+        }
+
+        public String toString() {
+            return (attribute ? "attribute" : "element") + " " + name;
         }
     }
 }

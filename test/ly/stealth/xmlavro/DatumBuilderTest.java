@@ -1,5 +1,7 @@
 package ly.stealth.xmlavro;
 
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.junit.Test;
 import org.xml.sax.SAXException;
 
@@ -15,11 +17,9 @@ public class DatumBuilderTest {
 
         String xml = "<i>1</i>";
 
-        Datum.Type type = Datum.Type.create(xsd);
-        Value value = Datum.create(type, xml);
-
-        assertEquals(Value.Type.INT, value.getType());
-        assertEquals(1, value.getObject());
+        Schema schema = SchemaBuilder.createSchema(xsd);
+        Object datum = DatumBuilder.createDatum(schema, xml);
+        assertEquals(1, datum);
     }
 
     @Test
@@ -44,12 +44,12 @@ public class DatumBuilderTest {
                 "  <d>1.0</d>" +
                 "</root>";
 
-        Record.Type type = Datum.Type.create(xsd);
-        Record record = Datum.create(type, xml);
+        Schema schema = SchemaBuilder.createSchema(xsd);
+        GenericData.Record record = DatumBuilder.createDatum(schema, xml);
 
-        assertEquals(1, record.getValue(type.getField("i")));
-        assertEquals("s", record.getValue(type.getField("s")));
-        assertEquals(1.0, record.getValue(type.getField("d")));
+        assertEquals(1, record.get("i"));
+        assertEquals("s", record.get("s"));
+        assertEquals(1.0, record.get("d"));
     }
 
     @Test
@@ -71,11 +71,11 @@ public class DatumBuilderTest {
                 "  <name>name</name>" +
                 "</user>";
 
-        Record.Type type = Datum.Type.create(xsd);
-        Record record = Datum.create(type, xml);
+        Schema schema = SchemaBuilder.createSchema(xsd);
+        GenericData.Record record = DatumBuilder.createDatum(schema, xml);
 
-        assertEquals("id", record.getValue(type.getField("id", true)));
-        assertEquals("name", record.getValue(type.getField("name")));
+        assertEquals("id", record.get("id"));
+        assertEquals("name", record.get("name"));
     }
 
     @Test
@@ -93,11 +93,11 @@ public class DatumBuilderTest {
 
         String xml = "<root field='value0'><field>value</field></root>";
 
-        Record.Type type = Datum.Type.create(xsd);
-        Record record = Datum.create(type, xml);
+        Schema schema = SchemaBuilder.createSchema(xsd);
+        GenericData.Record record = DatumBuilder.createDatum(schema, xml);
 
-        assertEquals("value", record.getValue(type.getField("field")));
-        assertEquals("value0", record.getValue(type.getField("field", true)));
+        assertEquals("value", record.get("field"));
+        assertEquals("value0", record.get("field0"));
     }
 
     @Test
@@ -120,13 +120,15 @@ public class DatumBuilderTest {
                 "  <field1>field1</field1>" +
                 "</root>";
 
-        Record.Type type = Datum.Type.create(xsd);
-        Record record = Datum.create(type, xml);
-        assertEquals("field", record.getValue(type.getField("field")));
+        Schema schema = SchemaBuilder.createSchema(xsd);
+        GenericData.Record record = DatumBuilder.createDatum(schema, xml);
+        assertEquals("field", record.get("field"));
 
-        Map map = record.getDatum(type.getAnyElementField());
+        @SuppressWarnings("unchecked")
+        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(SchemaBuilder.OTHERS);
+
         assertEquals(2, map.size());
-        assertEquals("field0", map.getValueObject("field0"));
-        assertEquals("field1", map.getValueObject("field1"));
+        assertEquals("field0", map.get("field0"));
+        assertEquals("field1", map.get("field1"));
     }
 }

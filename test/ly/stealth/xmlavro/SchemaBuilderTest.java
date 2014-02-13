@@ -1,21 +1,22 @@
 package ly.stealth.xmlavro;
 
 import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
+import org.apache.avro.Schema;
 import org.junit.Test;
 
 import static junit.framework.Assert.*;
 
-public class TypeBuilderTest {
+public class SchemaBuilderTest {
     @Test
     public void basic() {
         String xsd = "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
                      "  <xsd:element name='root' type='xsd:string'/>" +
                      "</xsd:schema>";
 
-        new TypeBuilder(xsd);
+        new SchemaBuilder(xsd);
 
         try { // no namespace
-            new TypeBuilder("<schema/>");
+            new SchemaBuilder("<schema/>");
             fail();
         } catch (XMLParseException e) {
             String message = e.getMessage();
@@ -31,7 +32,7 @@ public class TypeBuilderTest {
                 "   <xsd:element name='i' type='xsd:int'/>" +
                 "</xsd:schema>";
 
-        assertEquals(Value.Type.INT, Datum.Type.create(xsd));
+        assertEquals(Schema.create(Schema.Type.INT), SchemaBuilder.createSchema(xsd));
     }
 
     @Test
@@ -47,18 +48,18 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = Datum.Type.create(xsd);
-        assertEquals(new QName("type"), record.getQName());
+        Schema record = SchemaBuilder.createSchema(xsd);
+        assertEquals("type", record.getName());
 
         assertEquals(2, record.getFields().size());
 
-        Record.Field field0 = record.getFields().get(0);
-        assertEquals("s", field0.getAvroName());
-        assertEquals(Value.Type.STRING, field0.getType());
+        Schema.Field field0 = record.getFields().get(0);
+        assertEquals("s", field0.name());
+        assertEquals(Schema.Type.STRING, field0.schema().getType());
 
-        Record.Field field1 = record.getFields().get(1);
-        assertEquals("i", field1.getAvroName());
-        assertEquals(Value.Type.INT, field1.getType());
+        Schema.Field field1 = record.getFields().get(1);
+        assertEquals("i", field1.name());
+        assertEquals(Schema.Type.INT, field1.schema().getType());
     }
 
     @Test
@@ -78,14 +79,14 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='outer'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = Datum.Type.create(xsd);
-        assertEquals(new QName("outer"), record.getQName());
+        Schema record = SchemaBuilder.createSchema(xsd);
+        assertEquals("outer", record.getName());
 
-        Record.Field innerField = record.getField("inner");
-        assertTrue(innerField.getType().getClass().getName(), innerField.getType() instanceof Record.Type);
+        Schema.Field innerField = record.getField("inner");
+        assertEquals(Schema.Type.RECORD, innerField.schema().getType());
 
-        Record.Type innerRecord = innerField.getType();
-        assertEquals("inner", innerRecord.getQName().getName());
+        Schema innerRecord = innerField.schema();
+        assertEquals("inner", innerRecord.getName());
     }
 
     @Test
@@ -100,10 +101,10 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = Datum.Type.create(xsd);
+        Schema record = SchemaBuilder.createSchema(xsd);
 
-        Record.Field field = record.getField("node");
-        Record.Type subRecord = field.getType();
+        Schema.Field field = record.getField("node");
+        Schema subRecord = field.schema();
         assertSame(record, subRecord);
     }
 
@@ -120,15 +121,14 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = Datum.Type.create(xsd);
+        Schema record = SchemaBuilder.createSchema(xsd);
         assertEquals(2, record.getFields().size());
         assertNotNull(record.getField("element"));
 
-        Record.Field attrField = record.getField("attribute", true);
+        Schema.Field attrField = record.getField("attribute");
         assertNotNull(attrField);
 
-        assertEquals("attribute", attrField.getAvroName());
-        assertEquals(Value.Type.STRING, attrField.getType());
+        assertEquals(Schema.Type.STRING, attrField.schema().getType());
     }
 
     @Test
@@ -144,14 +144,13 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type type = Datum.Type.create(xsd);
+        Schema schema = SchemaBuilder.createSchema(xsd);
 
-        assertEquals(2, type.getFields().size());
-        Record.Field field = type.getField("field");
-        assertEquals("field", field.getAvroName());
+        assertEquals(2, schema.getFields().size());
+        assertNotNull(schema.getField("field"));
 
-        Record.Field field0 = type.getField("field", true);
-        assertEquals("field0", field0.getAvroName());
+        Schema.Field field0 = schema.getField("field0");
+        assertEquals("" + new SchemaBuilder.Source("field", true), field0.getProp(SchemaBuilder.SOURCE));
     }
 
     @Test
@@ -167,13 +166,10 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = Datum.Type.create(xsd);
-        assertTrue(record.supportsAnyElement());
+        Schema record = SchemaBuilder.createSchema(xsd);
         assertEquals(2, record.getFields().size());
 
-        Record.Field wildcardField = record.getFields().get(1);
-        assertNull(wildcardField.getSource().getQName());
-        assertTrue(wildcardField.getSource().isWildcard());
-        assertTrue("" + wildcardField.getType(), wildcardField.getType() instanceof Map.Type);
+        Schema.Field wildcardField = record.getField(SchemaBuilder.OTHERS);
+        assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
     }
 }

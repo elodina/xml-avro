@@ -1,5 +1,7 @@
 package ly.stealth.xmlavro;
 
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -14,12 +16,13 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.*;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 
 public class DatumBuilder {
-    private Datum.Type type;
-    private Element el;
+    public static <T> T createDatum(Schema schema, File file) { return new DatumBuilder(schema, file).createDatum(); }
+    public static <T> T createDatum(Schema schema, String xml) { return new DatumBuilder(schema, xml).createDatum(); }
+    public static <T> T createDatum(Schema schema, Reader reader) { return new DatumBuilder(schema, reader).createDatum(); }
+    public static <T> T createDatum(Schema schema, InputStream stream) { return new DatumBuilder(schema, stream).createDatum(); }
 
     private static Element parseElement(File file) {
         try (InputStream stream = new FileInputStream(file)) {
@@ -42,32 +45,47 @@ public class DatumBuilder {
         }
     }
 
-    public DatumBuilder(Datum.Type type, File file) { this(type, parseElement(file)); }
-    public DatumBuilder(Datum.Type type, String xml) { this(type, new StringReader(xml)); }
-    public DatumBuilder(Datum.Type type, Reader reader) { this(type, parseElement(new InputSource(reader))); }
-    public DatumBuilder(Datum.Type type, InputStream stream) { this(type, parseElement(new InputSource(stream))); }
+    private static final List<Schema.Type> PRIMITIVES;
+    static {
+        PRIMITIVES = Collections.unmodifiableList(Arrays.asList(
+                Schema.Type.STRING, Schema.Type.INT, Schema.Type.LONG, Schema.Type.FLOAT,
+                Schema.Type.DOUBLE, Schema.Type.BOOLEAN, Schema.Type.NULL
+        ));
+    }
 
-    private DatumBuilder(Datum.Type type, Element el) {
-        this.type = type;
+    public DatumBuilder(Schema schema, File file) { this(schema, parseElement(file)); }
+    public DatumBuilder(Schema schema, String xml) { this(schema, new StringReader(xml)); }
+    public DatumBuilder(Schema schema, Reader reader) { this(schema, parseElement(new InputSource(reader))); }
+    public DatumBuilder(Schema schema, InputStream stream) { this(schema, parseElement(new InputSource(stream))); }
+
+    private Schema schema;
+    private Element el;
+
+    private DatumBuilder(Schema schema, Element el) {
+        this.schema = schema;
         this.el = el;
     }
 
-    public <D extends Datum> D createDatum() {
-        return createDatum(type, el);
+    @SuppressWarnings("unchecked")
+    public <T> T createDatum() {
+        return (T) createDatum(schema, el);
     }
 
-    private <D extends Datum> D createDatum(Datum.Type type, Element el) {
+    private Object createDatum(Schema schema, Element el) {
         @SuppressWarnings("unchecked")
-        D datum = (D) (type.isPrimitive() ? createValue((Value.Type) type, el.getTextContent()) : createRecord((Record.Type) type, el));
+        Object datum = PRIMITIVES.contains(schema.getType()) ?
+                createValue(schema.getType(), el.getTextContent()) :
+                createRecord(schema, el);
+
         return datum;
     }
 
-    private Value createValue(Value.Type type, String text) {
-        return new Value(type, parseValue(type, text));
+    private Object createValue(Schema.Type type, String text) {
+        return parseValue(type, text);
     }
 
-    private Record createRecord(Record.Type type, Element el) {
-        Record record = new Record(type);
+    private GenericData.Record createRecord(Schema schema, Element el) {
+        GenericData.Record record = new GenericData.Record(schema);
 
         NodeList nodes = el.getChildNodes();
         for (int i = 0; i < nodes.getLength(); i++) {
@@ -75,23 +93,22 @@ public class DatumBuilder {
             if (node.getNodeType() != Node.ELEMENT_NODE) continue;
 
             Element child = (Element) node;
-            QName qName = new QName(child.getTagName(), child.getNamespaceURI());
-            Record.Field field = type.getField(qName);
+            Schema.Field field = getFieldBySource(schema, new SchemaBuilder.Source(child.getNodeName(), false));
 
             if (field != null) {
-                Datum datum = createDatum(field.getType(), child);
-                record.setDatum(field, datum);
+                Object datum = createDatum(field.schema(), child);
+                record.put(field.name(), datum);
             } else {
-                if (!type.supportsAnyElement())
+                Schema.Field anyField = schema.getField(SchemaBuilder.OTHERS);
+                if (anyField == null)
                     throw new IllegalStateException("Type doesn't support any element");
 
-                Record.Field anyField = type.getAnyElementField();
-                if (record.getDatum(anyField) == null)
-                    record.setDatum(anyField, new Map(new Map.Type(Value.Type.STRING)));
+                if (record.get(SchemaBuilder.OTHERS) == null)
+                    record.put(SchemaBuilder.OTHERS, new HashMap<String, Object>());
 
-                Map map = record.getDatum(anyField);
-                QName key = new QName(child.getTagName(), child.getNamespaceURI());
-                map.setValue("" + key, new Value(Value.Type.STRING, getContentAsText(child)));
+                @SuppressWarnings("unchecked")
+                Map<String, String> map = (HashMap<String, String>) record.get(SchemaBuilder.OTHERS);
+                map.put(child.getNodeName(), getContentAsText(child));
             }
         }
 
@@ -102,33 +119,42 @@ public class DatumBuilder {
             List<String> ignoredNamespaces = Arrays.asList("http://www.w3.org/2000/xmlns/", "http://www.w3.org/2001/XMLSchema-instance");
             if (ignoredNamespaces.contains(attr.getNamespaceURI())) continue;
 
-            QName qName = new QName(attr.getName(), attr.getNamespaceURI());
-            Record.Field field = type.getField(qName, true);
+            Schema.Field field = getFieldBySource(schema, new SchemaBuilder.Source(attr.getName(), true));
 
-            Value value = createValue((Value.Type) field.getType(), attr.getValue());
-            record.setDatum(field, value);
+            if (field == null)
+                throw new IllegalStateException("Unsupported attribute " + attr.getName());
+
+            record.put(field.name(), attr.getValue());
         }
 
         return record;
     }
 
-    private  Object parseValue(Value.Type type, String text) {
-        if (type == Value.Type.BOOLEAN)
+    static Schema.Field getFieldBySource(Schema schema, SchemaBuilder.Source source) {
+        for (Schema.Field field : schema.getFields())
+            if (source.toString().equals(field.getProp(SchemaBuilder.SOURCE)))
+                return field;
+
+        return null;
+    }
+
+    private  Object parseValue(Schema.Type type, String text) {
+        if (type == Schema.Type.BOOLEAN)
             return "true".equals(text) || "1".equals(text);
 
-        if (type == Value.Type.INT)
+        if (type == Schema.Type.INT)
             return Integer.parseInt(text);
 
-        if (type == Value.Type.LONG)
+        if (type == Schema.Type.LONG)
             return Long.parseLong(text);
 
-        if (type == Value.Type.FLOAT)
+        if (type == Schema.Type.FLOAT)
             return Float.parseFloat(text);
 
-        if (type == Value.Type.DOUBLE)
+        if (type == Schema.Type.DOUBLE)
             return Double.parseDouble(text);
 
-        if (type == Value.Type.STRING)
+        if (type == Schema.Type.STRING)
             return text;
 
         throw new UnsupportedOperationException("Unsupported type " + type);
