@@ -5,7 +5,7 @@ import org.xml.sax.SAXException;
 
 import static junit.framework.Assert.assertEquals;
 
-public class ConverterTest {
+public class DatumBuilderTest {
     @Test
     public void rootPrimitive() throws SAXException {
         String xsd =
@@ -15,8 +15,8 @@ public class ConverterTest {
 
         String xml = "<i>1</i>";
 
-        Converter converter = new Converter(new TypeBuilder(xsd).createType());
-        Value value = converter.convert(xml);
+        Datum.Type type = Datum.Type.create(xsd);
+        Value value = Datum.create(type, xml);
 
         assertEquals(Value.Type.INT, value.getType());
         assertEquals(1, value.getObject());
@@ -44,9 +44,8 @@ public class ConverterTest {
                 "  <d>1.0</d>" +
                 "</root>";
 
-        Converter converter = new Converter(new TypeBuilder(xsd).createType());
-        Record record = converter.convert(xml);
-        Record.Type type = record.getType();
+        Record.Type type = Datum.Type.create(xsd);
+        Record record = Datum.create(type, xml);
 
         assertEquals(1, record.getValue(type.getField("i")));
         assertEquals("s", record.getValue(type.getField("s")));
@@ -72,9 +71,8 @@ public class ConverterTest {
                 "  <name>name</name>" +
                 "</user>";
 
-        Converter converter = new Converter(new TypeBuilder(xsd).createType());
-        Record record = converter.convert(xml);
-        Record.Type type = record.getType();
+        Record.Type type = Datum.Type.create(xsd);
+        Record record = Datum.create(type, xml);
 
         assertEquals("id", record.getValue(type.getField("id", true)));
         assertEquals("name", record.getValue(type.getField("name")));
@@ -95,9 +93,8 @@ public class ConverterTest {
 
         String xml = "<root field='value0'><field>value</field></root>";
 
-        TypeBuilder typeBuilder = new TypeBuilder(xsd);
-        Record record = new Converter(typeBuilder.createType()).convert(xml);
-        Record.Type type = record.getType();
+        Record.Type type = Datum.Type.create(xsd);
+        Record record = Datum.create(type, xml);
 
         assertEquals("value", record.getValue(type.getField("field")));
         assertEquals("value0", record.getValue(type.getField("field", true)));

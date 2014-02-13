@@ -1,8 +1,5 @@
 package ly.stealth.xmlavro;
 
-import org.apache.avro.io.DatumWriter;
-import org.apache.avro.io.EncoderFactory;
-import org.apache.avro.specific.SpecificDatumWriter;
 import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -12,48 +9,39 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.*;
 
-public class Converter {
+public class DatumBuilder {
     private Datum.Type type;
+    private Element el;
 
-    public Converter(Datum.Type type) {
-        this.type = type;
-    }
-
-    public void convert(File inputFile, File outputFile) throws IOException, SAXException {
-        try (InputStream inputStream = new FileInputStream(inputFile);
-            OutputStream outputStream = new FileOutputStream(outputFile)) {
-            convert(inputStream, outputStream);
-        }
-    }
-
-    public void convert(InputStream inputStream, OutputStream outputStream) throws IOException, SAXException {
-        Datum datum = convert(inputStream);
-        org.apache.avro.Schema schema = datum.getType().toAvroSchema();
-
-        DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
-        datumWriter.write(datum.toAvroDatum(), EncoderFactory.get().directBinaryEncoder(outputStream, null));
-    }
-
-    public <D extends Datum> D convert(String s) throws SAXException {
-        try { return convert(new StringReader(s)); }
-        catch (IOException e) { throw new RuntimeException(e); }
-    }
-
-    public <D extends Datum> D convert(Reader reader) throws IOException, SAXException { return convert(new InputSource(reader)); }
-
-    public <D extends Datum> D convert(InputStream stream) throws IOException, SAXException { return convert(new InputSource(stream)); }
-
-    public <D extends Datum> D convert(InputSource source) throws IOException, SAXException {
-        try {
-            DocumentBuilder docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
-            Document doc = docBuilder.parse(source);
-            return convert(doc.getDocumentElement());
-        } catch (ParserConfigurationException e) {
+    private static Element parseElement(File file) {
+        try (InputStream stream = new FileInputStream(file)) {
+            return parseElement(new InputSource(stream));
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public <D extends Datum> D convert(Element el) {
+    private static Element parseElement(InputSource source) {
+        try {
+            DocumentBuilder docBuilder = DocumentBuilderFactory.newInstance().newDocumentBuilder();
+            Document doc = docBuilder.parse(source);
+            return doc.getDocumentElement();
+        } catch (ParserConfigurationException | SAXException | IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public DatumBuilder(Datum.Type type, File file) { this(type, parseElement(file)); }
+    public DatumBuilder(Datum.Type type, String xml) { this(type, new StringReader(xml)); }
+    public DatumBuilder(Datum.Type type, Reader reader) { this(type, parseElement(new InputSource(reader))); }
+    public DatumBuilder(Datum.Type type, InputStream stream) { this(type, parseElement(new InputSource(stream))); }
+
+    private DatumBuilder(Datum.Type type, Element el) {
+        this.type = type;
+        this.el = el;
+    }
+
+    public <D extends Datum> D createDatum() {
         return createDatum(type, el);
     }
 

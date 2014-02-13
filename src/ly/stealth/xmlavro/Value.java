@@ -4,7 +4,7 @@ import com.sun.org.apache.xerces.internal.xs.XSConstants;
 import com.sun.org.apache.xerces.internal.xs.XSSimpleTypeDefinition;
 import org.apache.avro.Schema;
 
-public class Value implements Datum {
+public class Value extends Datum {
     private Type type;
     private Object object;
 

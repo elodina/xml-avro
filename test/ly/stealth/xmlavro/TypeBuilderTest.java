@@ -31,8 +31,7 @@ public class TypeBuilderTest {
                 "   <xsd:element name='i' type='xsd:int'/>" +
                 "</xsd:schema>";
 
-        TypeBuilder typeBuilder = new TypeBuilder(xsd);
-        assertEquals(Value.Type.INT, typeBuilder.createType());
+        assertEquals(Value.Type.INT, Datum.Type.create(xsd));
     }
 
     @Test
@@ -48,9 +47,7 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        TypeBuilder typeBuilder = new TypeBuilder(xsd);
-
-        Record.Type record = typeBuilder.createType();
+        Record.Type record = Datum.Type.create(xsd);
         assertEquals(new QName("type"), record.getQName());
 
         assertEquals(2, record.getFields().size());
@@ -81,9 +78,7 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='outer'/>" +
                 "</xsd:schema>";
 
-        TypeBuilder typeBuilder = new TypeBuilder(xsd);
-
-        Record.Type record = typeBuilder.createType();
+        Record.Type record = Datum.Type.create(xsd);
         assertEquals(new QName("outer"), record.getQName());
 
         Record.Field innerField = record.getField("inner");
@@ -105,7 +100,7 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = new TypeBuilder(xsd).createType();
+        Record.Type record = Datum.Type.create(xsd);
 
         Record.Field field = record.getField("node");
         Record.Type subRecord = field.getType();
@@ -125,7 +120,7 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        Record.Type record = new TypeBuilder(xsd).createType();
+        Record.Type record = Datum.Type.create(xsd);
         assertEquals(2, record.getFields().size());
         assertNotNull(record.getField("element"));
 
@@ -149,8 +144,7 @@ public class TypeBuilderTest {
                 "  <xsd:element name='root' type='type'/>" +
                 "</xsd:schema>";
 
-        TypeBuilder typeBuilder = new TypeBuilder(xsd);
-        Record.Type type = typeBuilder.createType();
+        Record.Type type = Datum.Type.create(xsd);
 
         assertEquals(2, type.getFields().size());
         Record.Field field = type.getField("field");

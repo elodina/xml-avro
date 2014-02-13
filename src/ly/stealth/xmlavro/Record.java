@@ -6,7 +6,7 @@ import org.apache.avro.generic.GenericRecord;
 
 import java.util.*;
 
-public class Record implements Datum {
+public class Record extends Datum {
     private Type type;
     Map<Field, Datum> datums = new HashMap<>();
 
