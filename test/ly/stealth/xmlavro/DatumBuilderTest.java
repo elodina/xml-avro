@@ -99,4 +99,34 @@ public class DatumBuilderTest {
         assertEquals("value", record.getValue(type.getField("field")));
         assertEquals("value0", record.getValue(type.getField("field", true)));
     }
+
+    @Test
+    public void recordWithWildcardField() {
+        String xsd =
+                "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xsd:complexType name='type'>" +
+                "    <xsd:sequence>" +
+                "      <xsd:element name='field' type='xsd:string'/>" +
+                "      <xsd:any/>" +
+                "    </xsd:sequence>" +
+                "  </xsd:complexType>" +
+                "  <xsd:element name='root' type='type'/>" +
+                "</xsd:schema>";
+
+        String xml =
+                "<root>" +
+                "  <field>field</field>" +
+                "  <field0>field0</field0>" +
+                "  <field1>field1</field1>" +
+                "</root>";
+
+        Record.Type type = Datum.Type.create(xsd);
+        Record record = Datum.create(type, xml);
+        assertEquals("field", record.getValue(type.getField("field")));
+
+        Map map = record.getDatum(type.getAnyElementField());
+        assertEquals(2, map.size());
+        assertEquals("field0", map.getValueObject("field0"));
+        assertEquals("field1", map.getValueObject("field1"));
+    }
 }

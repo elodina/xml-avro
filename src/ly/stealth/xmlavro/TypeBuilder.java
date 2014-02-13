@@ -9,7 +9,10 @@ import com.sun.org.apache.xerces.internal.xs.*;
 import org.w3c.dom.ls.LSInput;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
 
 public class TypeBuilder {
     private static XSModel parse(File file) throws IOException {
@@ -49,7 +52,7 @@ public class TypeBuilder {
     // Type by QName, where QName:
     // - QName of type for named types
     // - QName of element for anonymous or simple types of root elements
-    private Map<QName, Datum.Type> types = new LinkedHashMap<>();
+    private java.util.Map<QName, Datum.Type> types = new LinkedHashMap<>();
 
     public TypeBuilder(String xsd) { this(parse(new StringReader(xsd))); }
 
@@ -106,14 +109,14 @@ public class TypeBuilder {
     }
 
     private List<Record.Field> createFields(XSComplexTypeDefinition type) {
-        final Map<Record.Origin, Record.Field> fields = new LinkedHashMap<>();
+        final java.util.Map<Record.Source, Record.Field> fields = new LinkedHashMap<>();
 
         XSParticle particle = type.getParticle();
         if (particle == null) return new ArrayList<>(fields.values());
 
         XSTerm term = particle.getTerm();
         if (term.getType() != XSConstants.MODEL_GROUP)
-            throw new UnsupportedOperationException("Unsupported term type");
+            throw new UnsupportedOperationException("Unsupported term type " + term.getType());
 
         XSModelGroup group = (XSModelGroup) term;
         new Object() {
@@ -128,11 +131,15 @@ public class TypeBuilder {
                         case XSConstants.ELEMENT_DECLARATION:
                             XSElementDeclaration el = (XSElementDeclaration) term;
                             Record.Field field = createField(el, el.getTypeDefinition());
-                            fields.put(field.getOrigin(), field);
+                            fields.put(field.getSource(), field);
                             break;
                         case XSConstants.MODEL_GROUP:
                             XSModelGroup subGroup = (XSModelGroup) term;
                             collectElementFields(subGroup);
+                            break;
+                        case XSConstants.WILDCARD:
+                            field = createField(term, null);
+                            fields.put(field.getSource(), field);
                             break;
                         default:
                             throw new UnsupportedOperationException("Unsupported term type " + term.getType());
@@ -147,29 +154,34 @@ public class TypeBuilder {
             XSAttributeDeclaration attr = attrUse.getAttrDeclaration();
 
             Record.Field field = createField(attr, attr.getTypeDefinition());
-            fields.put(field.getOrigin(), field);
+            fields.put(field.getSource(), field);
         }
 
         return new ArrayList<>(fields.values());
     }
 
-    private Record.Field createField(XSObject originObj, XSTypeDefinition type) {
-        if (!Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION).contains(originObj.getType()))
-            throw new IllegalArgumentException("Invalid origin object type " + originObj.getType());
+    private Record.Field createField(XSObject source, XSTypeDefinition type) {
+        List<Short> types = Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION, XSConstants.WILDCARD);
+        if (!types.contains(source.getType()))
+            throw new IllegalArgumentException("Invalid origin object type " + source.getType());
+
+        boolean wildcard = source.getType() == XSConstants.WILDCARD;
+        if (wildcard) return new Record.Field(new Record.Source(null, false), new Map.Type(Value.Type.STRING));
 
         boolean simple = type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
         Datum.Type fieldType;
 
         if (simple) fieldType = Value.Type.valueOf((XSSimpleTypeDefinition) type);
         else {
-            fieldType = types.get(new QName(type.getName(), type.getNamespace()));
+            QName qName = !type.getAnonymous() ? new QName(type.getName(), type.getNamespace()) : null;
+            fieldType = this.types.get(qName);
             if (fieldType == null) fieldType = createRecord((XSComplexTypeDefinition) type);
         }
 
-        QName qName = new QName(originObj.getName(), originObj.getNamespace());
-        boolean attribute = originObj.getType() == XSConstants.ATTRIBUTE_DECLARATION;
+        QName qName = new QName(source.getName(), source.getNamespace());
+        boolean attribute = source.getType() == XSConstants.ATTRIBUTE_DECLARATION;
 
-        return new Record.Field(new Record.Origin(qName, attribute), fieldType);
+        return new Record.Field(new Record.Source(qName, attribute), fieldType);
     }
 
     private static class ErrorHandler implements XMLErrorHandler {

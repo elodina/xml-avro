@@ -5,10 +5,11 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 
 import java.util.*;
+import java.util.Map;
 
 public class Record extends Datum {
     private Type type;
-    Map<Field, Datum> datums = new HashMap<>();
+    private Map<Field, Datum> datums = new HashMap<>();
 
     public Record(Type type) {
         this.type = type;
@@ -58,15 +59,21 @@ public class Record extends Datum {
 
         public Field getField(QName qName) { return getField(qName, false); }
 
-        public Field getField(QName qName, boolean attribute) { return getField(new Origin(qName, attribute)); }
+        public Field getField(QName qName, boolean attribute) { return getField(new Source(qName, attribute)); }
 
-        public Field getField(Origin origin) {
+        public Field getField(Source source) {
             for (Field field : fields)
-                if (field.getOrigin().equals(origin))
+                if (field.getSource().equals(source))
                     return field;
 
-            throw new IllegalArgumentException("Field with origin " + origin + " not found");
+            return null;
         }
+
+        public Field getAnyElementField() { return getField(new Source(null, false)); }
+        public Field getAnyAttributeField() { return getField(new Source(null, true)); }
+
+        public boolean supportsAnyElement() { return getAnyElementField() != null; }
+        public boolean supportsAnyAttribute() { return getAnyAttributeField() != null; }
 
         public List<Field> getFields() { return Collections.unmodifiableList(fields); }
 
@@ -85,7 +92,6 @@ public class Record extends Datum {
             field.parent = null;
         }
 
-
         @Override
         public boolean isAnonymous() { return qName == null; }
 
@@ -101,7 +107,7 @@ public class Record extends Datum {
             List<Schema.Field> fields = new ArrayList<>();
             for (Field field : this.fields) {
                 Schema.Field f = new Schema.Field(field.getAvroName(), field.getType().toAvroSchema(), null, null);
-                f.addProp("origin", "" + field.getOrigin());
+                f.addProp("source", "" + field.getSource());
                 fields.add(f);
             }
 
@@ -113,17 +119,17 @@ public class Record extends Datum {
     public static class Field {
         private Record.Type parent;
 
-        private Origin origin;
+        private Source source;
         private Datum.Type type;
 
         private String doc;
 
-        public Field(Origin origin, Datum.Type type) {
-            this.origin = origin;
+        public Field(Source source, Datum.Type type) {
+            this.source = source;
             this.type = type;
         }
 
-        public Origin getOrigin() { return origin; }
+        public Source getSource() { return source; }
 
         @SuppressWarnings("unchecked")
         public <T extends Datum.Type> T getType() { return (T) type; }
@@ -134,13 +140,13 @@ public class Record extends Datum {
 
 
         public String getAvroName() {
-            String name = origin.getQName().getName();
+            String name = source.getAvroBaseName();
             int duplicates = 0;
 
             for (Field field : parent.getFields()) {
                 if (field.equals(this)) break;
 
-                if (field.getOrigin().getQName().getName().equals(name))
+                if (field.getSource().getAvroBaseName().equals(name))
                     duplicates ++;
             }
 
@@ -148,15 +154,17 @@ public class Record extends Datum {
         }
     }
 
-    public static class Origin {
+    public static class Source {
+        // qName of element/attribute or null for any element/attribute
         private QName qName;
+        // element or attribute
         private boolean attribute;
 
-        public Origin(String name) { this(new QName(name)); }
+        public Source(String name) { this(new QName(name)); }
 
-        public Origin(QName qName) { this(qName, false); }
+        public Source(QName qName) { this(qName, false); }
 
-        public Origin(QName qName, boolean attribute) {
+        public Source(QName qName, boolean attribute) {
             this.qName = qName;
             this.attribute = attribute;
         }
@@ -164,19 +172,31 @@ public class Record extends Datum {
 
         public QName getQName() { return qName; }
 
+        public boolean isElement() { return !isAttribute(); }
         public boolean isAttribute() { return attribute; }
+
+        public boolean isWildcard() { return qName == null; }
+
+        public String getAvroBaseName() {
+            if (qName == null) return attribute ? "anyAttribute" : "anyElement";
+
+            String name = qName.getName();
+            name = name.replace(".", "_");
+
+            return name;
+        }
 
 
         public int hashCode() { return Objects.hash(qName, attribute); }
 
         public boolean equals(Object obj) {
-            if (!(obj instanceof Origin)) return false;
-            Origin origin = (Origin) obj;
-            return qName.equals(origin.qName) && attribute == origin.attribute;
+            if (!(obj instanceof Source)) return false;
+            Source source = (Source) obj;
+            return Objects.equals(qName, source.qName) && attribute == source.attribute;
         }
 
         public String toString() {
-            return (attribute ? "attribute" : "element") + " " + qName;
+            return (qName != null ? qName : "*") + " " + (attribute ? "attribute" : "element");
         }
     }
 }

@@ -153,4 +153,27 @@ public class TypeBuilderTest {
         Record.Field field0 = type.getField("field", true);
         assertEquals("field0", field0.getAvroName());
     }
+
+    @Test
+    public void recordWithWildcardField() {
+        String xsd =
+                "<xsd:schema xmlns:xsd='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xsd:complexType name='type'>" +
+                "    <xsd:sequence>" +
+                "      <xsd:element name='field' type='xsd:string'/>" +
+                "      <xsd:any/>" +
+                "    </xsd:sequence>" +
+                "  </xsd:complexType>" +
+                "  <xsd:element name='root' type='type'/>" +
+                "</xsd:schema>";
+
+        Record.Type record = Datum.Type.create(xsd);
+        assertTrue(record.supportsAnyElement());
+        assertEquals(2, record.getFields().size());
+
+        Record.Field wildcardField = record.getFields().get(1);
+        assertNull(wildcardField.getSource().getQName());
+        assertTrue(wildcardField.getSource().isWildcard());
+        assertTrue("" + wildcardField.getType(), wildcardField.getType() instanceof Map.Type);
+    }
 }
