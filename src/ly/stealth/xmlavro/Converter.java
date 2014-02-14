@@ -30,7 +30,7 @@ import java.util.*;
 
 public class Converter {
     public static final String SOURCE = "source";
-    public static final String OTHERS = "others";
+    public static final String WILDCARD = "others";
 
     public static Schema createSchema(String xsd) { return new SchemaBuilder(xsd).createSchema(); }
     public static Schema createSchema(File file) throws IOException { return new SchemaBuilder(file).createSchema(); }
@@ -74,13 +74,13 @@ public class Converter {
             return schema;
         }
 
-        private XSModel schema;
+        private XSModel model;
         private String rootElementName;
 
         // Type by QName, where QName:
         // - QName of type for named types
         // - QName of element for anonymous or simple types of root elements
-        private Map<String, Schema> types = new LinkedHashMap<>();
+        private Map<String, Schema> schemas = new LinkedHashMap<>();
 
         public SchemaBuilder(String xsd) { this(parse(new StringReader(xsd))); }
 
@@ -89,7 +89,7 @@ public class Converter {
         public SchemaBuilder(Reader reader) { this(parse(reader)); }
         public SchemaBuilder(InputStream stream) { this(parse(stream)); }
 
-        private SchemaBuilder(XSModel schema) { this.schema = schema; }
+        private SchemaBuilder(XSModel model) { this.model = model; }
 
         public String getRootElementName() { return rootElementName; }
         public void setRootElementName(String rootElementName) { this.rootElementName = rootElementName; }
@@ -97,50 +97,52 @@ public class Converter {
 
         @SuppressWarnings("unchecked")
         public Schema createSchema() {
+            schemas.clear();
+
             XSElementDeclaration el = getRootElement();
             XSTypeDefinition type = el.getTypeDefinition();
 
-            types.clear();
-            return createType(type);
+            return createSchema(false, type);
         }
 
         private XSElementDeclaration getRootElement() {
             if (rootElementName != null) {
-                XSElementDeclaration el = schema.getElementDeclaration(rootElementName, null);
+                XSElementDeclaration el = model.getElementDeclaration(rootElementName, null);
                 if (el == null) throw new IllegalStateException("Root element declaration " + rootElementName + " not found");
                 return el;
             }
 
-            XSNamedMap elMap = schema.getComponents(XSConstants.ELEMENT_DECLARATION);
+            XSNamedMap elMap = model.getComponents(XSConstants.ELEMENT_DECLARATION);
             if (elMap.getLength() == 0) throw new IllegalStateException("No root element declaration");
             if (elMap.getLength() > 1) throw new IllegalStateException("Ambiguous root element declarations");
 
             return (XSElementDeclaration) elMap.item(0);
         }
 
-        private Schema createType(XSTypeDefinition type) {
-            if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
-                return Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
-            else
-                return createRecord((XSComplexTypeDefinition) type);
-        }
+        private Schema createSchema(boolean nullable, XSTypeDefinition type) {
+            Schema schema = schemas.get(type.getName());
 
-        private Schema.Type getPrimitiveType(XSSimpleTypeDefinition type) {
-            switch (type.getBuiltInKind()) {
-                case XSConstants.BOOLEAN_DT: return Schema.Type.BOOLEAN;
-                case XSConstants.INT_DT: return Schema.Type.INT;
-                case XSConstants.LONG_DT: return Schema.Type.LONG;
-                case XSConstants.FLOAT_DT: return Schema.Type.FLOAT;
-                case XSConstants.DOUBLE_DT: return Schema.Type.DOUBLE;
-                default: return Schema.Type.STRING;
+            if (schema == null) {
+                if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
+                    schema = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
+                else
+                    schema = createRecordSchema((XSComplexTypeDefinition) type);
             }
+
+            if (nullable) {
+                Schema nullSchema = Schema.create(Schema.Type.NULL);
+                schema = Schema.createUnion(Arrays.asList(schema, nullSchema));
+            }
+
+            return schema;
         }
 
-        private Schema createRecord(XSComplexTypeDefinition type) {
+        private Schema createRecordSchema(XSComplexTypeDefinition type) {
             String name = type.getName();
+            if (name == null) name = nextTypeName();
 
             Schema record = Schema.createRecord(name, null, null, false);
-            if (name != null) types.put(name, record);
+            if (name != null) schemas.put(name, record);
 
             record.setFields(createFields(type));
             return record;
@@ -148,6 +150,16 @@ public class Converter {
 
         private List<Schema.Field> createFields(XSComplexTypeDefinition type) {
             final Map<String, Schema.Field> fields = new LinkedHashMap<>();
+
+            XSObjectList attrUses = type.getAttributeUses();
+            for (int i = 0; i < attrUses.getLength(); i++) {
+                XSAttributeUse attrUse = (XSAttributeUse) attrUses.item(i);
+                XSAttributeDeclaration attrDecl = attrUse.getAttrDeclaration();
+
+                boolean nullable = !attrUse.getRequired();
+                Schema.Field field = createField(fields.values(), attrDecl, attrDecl.getTypeDefinition(), nullable);
+                fields.put(field.getProp(SOURCE), field);
+            }
 
             XSParticle particle = type.getParticle();
             if (particle == null) return new ArrayList<>(fields.values());
@@ -168,7 +180,9 @@ public class Converter {
                         switch (term.getType()) {
                             case XSConstants.ELEMENT_DECLARATION:
                                 XSElementDeclaration el = (XSElementDeclaration) term;
-                                Schema.Field field = createField(fields.values(), el, el.getTypeDefinition());
+                                boolean nullable = particle.getMinOccurs() == 0;
+
+                                Schema.Field field = createField(fields.values(), el, el.getTypeDefinition(), nullable);
                                 fields.put(field.getProp(SOURCE), field);
                                 break;
                             case XSConstants.MODEL_GROUP:
@@ -176,7 +190,8 @@ public class Converter {
                                 collectElementFields(subGroup);
                                 break;
                             case XSConstants.WILDCARD:
-                                field = createField(fields.values(), term, null);
+                                nullable = particle.getMinOccurs() == 0;
+                                field = createField(fields.values(), term, null, nullable);
                                 fields.put(field.getProp(SOURCE), field);
                                 break;
                             default:
@@ -186,53 +201,53 @@ public class Converter {
                 }
             }.collectElementFields(group);
 
-            XSObjectList attrUses = type.getAttributeUses();
-            for (int i = 0; i < attrUses.getLength(); i++) {
-                XSAttributeUse attrUse = (XSAttributeUse) attrUses.item(i);
-                XSAttributeDeclaration attr = attrUse.getAttrDeclaration();
-
-                Schema.Field field = createField(fields.values(), attr, attr.getTypeDefinition());
-                fields.put(field.getProp(SOURCE), field);
-            }
-
             return new ArrayList<>(fields.values());
         }
 
-        private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type) {
-            List<Short> types = Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION, XSConstants.WILDCARD);
-            if (!types.contains(source.getType()))
-                throw new IllegalArgumentException("Invalid origin object type " + source.getType());
+        private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type, boolean nullable) {
+            List<Short> supportedTypes = Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION, XSConstants.WILDCARD);
+            if (!supportedTypes.contains(source.getType()))
+                throw new IllegalArgumentException("Invalid source object type " + source.getType());
 
             boolean wildcard = source.getType() == XSConstants.WILDCARD;
             if (wildcard) {
                 Schema map = Schema.createMap(Schema.create(Schema.Type.STRING));
-                return new Schema.Field(OTHERS, map, null, null);
+                return new Schema.Field(WILDCARD, map, null, null);
             }
 
-            boolean simple = type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE;
-            Schema fieldType;
-
-            if (simple) fieldType = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
-            else {
-                fieldType = this.types.get(type.getName());
-                if (fieldType == null) fieldType = createRecord((XSComplexTypeDefinition) type);
-            }
-
-            boolean attribute = source.getType() == XSConstants.ATTRIBUTE_DECLARATION;
+            Schema fieldSchema = createSchema(nullable, type);
 
             String name = validName(source.getName());
+            name = uniqueFieldName(fields, name);
 
+            Schema.Field field = new Schema.Field(name, fieldSchema, null, null);
+
+            boolean attribute = source.getType() == XSConstants.ATTRIBUTE_DECLARATION;
+            field.addProp(SOURCE, "" + new Source(source.getName(), attribute));
+
+            return field;
+        }
+
+        private Schema.Type getPrimitiveType(XSSimpleTypeDefinition type) {
+            switch (type.getBuiltInKind()) {
+                case XSConstants.BOOLEAN_DT: return Schema.Type.BOOLEAN;
+                case XSConstants.INT_DT: return Schema.Type.INT;
+                case XSConstants.LONG_DT: return Schema.Type.LONG;
+                case XSConstants.FLOAT_DT: return Schema.Type.FLOAT;
+                case XSConstants.DOUBLE_DT: return Schema.Type.DOUBLE;
+                default: return Schema.Type.STRING;
+            }
+        }
+
+        static String uniqueFieldName(Iterable<Schema.Field> fields, String name) {
             int duplicates = 0;
+
             for (Schema.Field field : fields) {
                 if (field.name().equals(name))
                     duplicates++;
             }
-            String uniqueName = name + (duplicates > 0 ? duplicates - 1 : "");
 
-            Schema.Field field = new Schema.Field(uniqueName, fieldType, null, null);
-            field.addProp(SOURCE, "" + new Source(source.getName(), attribute));
-
-            return field;
+            return name + (duplicates > 0 ? duplicates - 1 : "");
         }
 
         static String validName(String name) {
@@ -260,6 +275,9 @@ public class Converter {
 
             return new String(result, 0, p);
         }
+
+        private int typeName;
+        private String nextTypeName() { return "type" + typeName++; }
 
         private static class ErrorHandler implements XMLErrorHandler {
             XMLParseException exception;
@@ -330,12 +348,23 @@ public class Converter {
         }
 
         private Object createDatum(Schema schema, Element el) {
-            @SuppressWarnings("unchecked")
-            Object datum = PRIMITIVES.contains(schema.getType()) ?
-                    createValue(schema.getType(), el.getTextContent()) :
-                    createRecord(schema, el);
+            if (PRIMITIVES.contains(schema.getType()))
+                return createValue(schema.getType(), el.getTextContent());
 
-            return datum;
+            if (schema.getType() == Schema.Type.UNION) {
+                // Unions could exist only in form of [type, null],
+                // which means nullable type
+                List<Schema> unionTypes = schema.getTypes();
+                if (unionTypes.size() != 2 || unionTypes.get(1).getType() != Schema.Type.NULL)
+                    throw new IllegalStateException("Unsupported union type " + schema);
+
+                return createDatum(unionTypes.get(0), el);
+            }
+
+            if (schema.getType() == Schema.Type.RECORD)
+                return createRecord(schema, el);
+
+            throw new IllegalStateException("Unsupported schema type " + schema.getType());
         }
 
         private Object createValue(Schema.Type type, String text) {
@@ -357,15 +386,15 @@ public class Converter {
                     Object datum = createDatum(field.schema(), child);
                     record.put(field.name(), datum);
                 } else {
-                    Schema.Field anyField = schema.getField(OTHERS);
+                    Schema.Field anyField = schema.getField(WILDCARD);
                     if (anyField == null)
                         throw new IllegalStateException("Type doesn't support any element");
 
-                    if (record.get(OTHERS) == null)
-                        record.put(OTHERS, new HashMap<String, Object>());
+                    if (record.get(WILDCARD) == null)
+                        record.put(WILDCARD, new HashMap<String, Object>());
 
                     @SuppressWarnings("unchecked")
-                    Map<String, String> map = (HashMap<String, String>) record.get(OTHERS);
+                    Map<String, String> map = (HashMap<String, String>) record.get(WILDCARD);
                     map.put(child.getNodeName(), getContentAsText(child));
                 }
             }
@@ -497,6 +526,7 @@ public class Converter {
         }
 
         Object datum = createDatum(schema, xmlFile);
+
         try (OutputStream stream = new FileOutputStream(avroFile)) {
             DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
             datumWriter.write(datum, EncoderFactory.get().directBinaryEncoder(stream, null));
