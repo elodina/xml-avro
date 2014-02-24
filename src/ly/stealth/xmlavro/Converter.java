@@ -373,6 +373,11 @@ public class Converter {
         private GenericData.Record createRecord(Schema schema, Element el) {
             GenericData.Record record = new GenericData.Record(schema);
 
+            // initialize arrays
+            for (Schema.Field field : record.getSchema().getFields())
+                if (field.schema().getType() == Schema.Type.ARRAY)
+                    record.put(field.name(), new ArrayList<>());
+
             NodeList nodes = el.getChildNodes();
             for (int i = 0; i < nodes.getLength(); i++) {
                 Node node = nodes.item(i);
@@ -390,12 +395,6 @@ public class Converter {
                     else {
                         @SuppressWarnings("unchecked")
                         List<Object> values = (List<Object>) record.get(field.name());
-
-                        if (values == null) {
-                            values = new ArrayList<>();
-                            record.put(field.name(), values);
-                        }
-
                         values.add(datum);
                     }
                 } else {
