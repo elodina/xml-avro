@@ -6,6 +6,7 @@ import org.apache.avro.generic.GenericData;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.List;
 
 import static junit.framework.Assert.*;
 
@@ -286,7 +287,7 @@ public class ConverterTest {
     }
 
     @Test
-    public void arrayValues() {
+    public void array() {
         String xsd =
                 "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
                 "  <xs:element name='root'>" +
@@ -311,6 +312,36 @@ public class ConverterTest {
 
         GenericData.Record record = Converter.createDatum(schema, xml);
         assertEquals(Arrays.asList("1", "2", "3"), record.get("value"));
+    }
+
+    @Test
+    public void choiceElements() {
+        String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "      <xs:choice>" +
+                "        <xs:element name='s' type='xs:string'/>" +
+                "        <xs:element name='i' type='xs:int'/>" +
+                "      </xs:choice>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        Schema schema = Converter.createSchema(xsd);
+        assertEquals(Schema.Type.UNION, schema.getType());
+
+        List<Schema> types = schema.getTypes();
+        assertEquals(Schema.Type.STRING, types.get(0).getType());
+        assertEquals(Schema.Type.INT, types.get(1).getType());
+
+        String xml = "<root><s>s</s></root>";
+        GenericData.Record record = Converter.createDatum(schema, xml);
+        assertEquals("s", record.get("s"));
+
+        xml = "<root><i>1</i></root>";
+        record = Converter.createDatum(schema, xml);
+        assertEquals(1, record.get("i"));
     }
 
     @Test
