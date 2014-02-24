@@ -174,7 +174,7 @@ public class Converter {
 
                     for (int j = 0; j < particles.getLength(); j++) {
                         XSParticle particle = (XSParticle) particles.item(j);
-                        boolean optional = particle.getMinOccurs() == 0;
+                        boolean optional = particle.getMinOccurs() == 0 || group.getCompositor() == XSModelGroup.COMPOSITOR_CHOICE;
                         boolean array = particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded();
 
                         XSTerm term = particle.getTerm();

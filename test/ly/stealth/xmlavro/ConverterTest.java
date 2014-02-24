@@ -6,7 +6,6 @@ import org.apache.avro.generic.GenericData;
 import org.junit.Test;
 
 import java.util.Arrays;
-import java.util.List;
 
 import static junit.framework.Assert.*;
 
@@ -329,11 +328,22 @@ public class ConverterTest {
                 "</xs:schema>";
 
         Schema schema = Converter.createSchema(xsd);
-        assertEquals(Schema.Type.UNION, schema.getType());
+        assertEquals(Schema.Type.RECORD, schema.getType());
+        assertEquals(2, schema.getFields().size());
 
-        List<Schema> types = schema.getTypes();
-        assertEquals(Schema.Type.STRING, types.get(0).getType());
-        assertEquals(Schema.Type.INT, types.get(1).getType());
+        Schema.Field sField = schema.getField("s");
+        assertEquals(Schema.Type.UNION, sField.schema().getType());
+        assertEquals(
+                Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
+                sField.schema().getTypes()
+        );
+
+        Schema.Field iField = schema.getField("i");
+        assertEquals(Schema.Type.UNION, iField.schema().getType());
+        assertEquals(
+                Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL)),
+                iField.schema().getTypes()
+        );
 
         String xml = "<root><s>s</s></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
