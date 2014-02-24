@@ -243,14 +243,14 @@ public class ConverterTest {
     }
 
     @Test
-    public void nullableElementValues() {
+    public void optionalElementValues() {
         String xsd =
                 "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
                 "  <xs:element name='root'>" +
                 "    <xs:complexType>" +
                 "      <xs:sequence>" +
                 "        <xs:element name='required' type='xs:string'/>" +
-                "        <xs:element name='nullable' type='xs:string' minOccurs='0'/>" +
+                "        <xs:element name='optional' type='xs:string' minOccurs='0'/>" +
                 "      </xs:sequence>" +
                 "    </xs:complexType>" +
                 "  </xs:element>" +
@@ -262,28 +262,56 @@ public class ConverterTest {
         Schema.Field requiredField = schema.getField("required");
         assertEquals(Schema.Type.STRING, requiredField.schema().getType());
 
-        Schema.Field nullableField = schema.getField("nullable");
-        Schema nullableSchema = nullableField.schema();
-        assertEquals(Schema.Type.UNION, nullableSchema.getType());
+        Schema.Field optionalField = schema.getField("optional");
+        Schema optionalSchema = optionalField.schema();
+        assertEquals(Schema.Type.UNION, optionalSchema.getType());
 
         assertEquals(
                 Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
-                nullableSchema.getTypes()
+                optionalSchema.getTypes()
         );
 
         String xml = "<root><required>required</required></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
 
         assertEquals("required", record.get("required"));
-        assertNull(record.get("nullable"));
+        assertNull(record.get("optional"));
 
         xml = "<root>" +
               "  <required>required</required>" +
-              "  <nullable>nullable</nullable>" +
+              "  <optional>optional</optional>" +
               "</root>";
 
         record = Converter.createDatum(schema, xml);
-        assertEquals("nullable", record.get("nullable"));
+        assertEquals("optional", record.get("optional"));
+    }
+
+    @Test
+    public void valueArrays() {
+        String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "      <xs:sequence>" +
+                "        <xs:element name='value' type='xs:string' maxOccurs='unbounded'/>" +
+                "      </xs:sequence>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        Schema schema = Converter.createSchema(xsd);
+        Schema.Field valueField = schema.getField("value");
+        assertEquals(Schema.Type.ARRAY, valueField.schema().getType());
+        assertEquals(Schema.Type.STRING, valueField.schema().getValueType().getType());
+
+        String xml = "<root>" +
+                     "  <value>1</value>" +
+                     "  <value>2</value>" +
+                     "  <value>3</value>" +
+                     "</root>";
+
+        GenericData.Record record = Converter.createDatum(schema, xml);
+        assertEquals(new String[] {"1", "2", "3"}, record.get("value"));
     }
 
     @Test

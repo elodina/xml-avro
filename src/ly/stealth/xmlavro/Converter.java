@@ -77,9 +77,6 @@ public class Converter {
         private XSModel model;
         private String rootElementName;
 
-        // Type by QName, where QName:
-        // - QName of type for named types
-        // - QName of element for anonymous or simple types of root elements
         private Map<String, Schema> schemas = new LinkedHashMap<>();
 
         public SchemaBuilder(String xsd) { this(parse(new StringReader(xsd))); }
@@ -119,7 +116,7 @@ public class Converter {
             return (XSElementDeclaration) elMap.item(0);
         }
 
-        private Schema createSchema(boolean nullable, XSTypeDefinition type) {
+        private Schema createSchema(boolean optional, XSTypeDefinition type) {
             Schema schema = schemas.get(type.getName());
 
             if (schema == null) {
@@ -129,7 +126,7 @@ public class Converter {
                     schema = createRecordSchema((XSComplexTypeDefinition) type);
             }
 
-            if (nullable) {
+            if (optional) {
                 Schema nullSchema = Schema.create(Schema.Type.NULL);
                 schema = Schema.createUnion(Arrays.asList(schema, nullSchema));
             }
@@ -156,8 +153,8 @@ public class Converter {
                 XSAttributeUse attrUse = (XSAttributeUse) attrUses.item(i);
                 XSAttributeDeclaration attrDecl = attrUse.getAttrDeclaration();
 
-                boolean nullable = !attrUse.getRequired();
-                Schema.Field field = createField(fields.values(), attrDecl, attrDecl.getTypeDefinition(), nullable);
+                boolean optional = !attrUse.getRequired();
+                Schema.Field field = createField(fields.values(), attrDecl, attrDecl.getTypeDefinition(), optional);
                 fields.put(field.getProp(SOURCE), field);
             }
 
@@ -180,9 +177,9 @@ public class Converter {
                         switch (term.getType()) {
                             case XSConstants.ELEMENT_DECLARATION:
                                 XSElementDeclaration el = (XSElementDeclaration) term;
-                                boolean nullable = particle.getMinOccurs() == 0;
+                                boolean optional = particle.getMinOccurs() == 0;
 
-                                Schema.Field field = createField(fields.values(), el, el.getTypeDefinition(), nullable);
+                                Schema.Field field = createField(fields.values(), el, el.getTypeDefinition(), optional);
                                 fields.put(field.getProp(SOURCE), field);
                                 break;
                             case XSConstants.MODEL_GROUP:
@@ -190,8 +187,8 @@ public class Converter {
                                 collectElementFields(subGroup);
                                 break;
                             case XSConstants.WILDCARD:
-                                nullable = particle.getMinOccurs() == 0;
-                                field = createField(fields.values(), term, null, nullable);
+                                optional = particle.getMinOccurs() == 0;
+                                field = createField(fields.values(), term, null, optional);
                                 fields.put(field.getProp(SOURCE), field);
                                 break;
                             default:
@@ -204,7 +201,7 @@ public class Converter {
             return new ArrayList<>(fields.values());
         }
 
-        private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type, boolean nullable) {
+        private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type, boolean optional) {
             List<Short> supportedTypes = Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION, XSConstants.WILDCARD);
             if (!supportedTypes.contains(source.getType()))
                 throw new IllegalArgumentException("Invalid source object type " + source.getType());
@@ -215,7 +212,7 @@ public class Converter {
                 return new Schema.Field(WILDCARD, map, null, null);
             }
 
-            Schema fieldSchema = createSchema(nullable, type);
+            Schema fieldSchema = createSchema(optional, type);
 
             String name = validName(source.getName());
             name = uniqueFieldName(fields, name);
@@ -353,7 +350,7 @@ public class Converter {
 
             if (schema.getType() == Schema.Type.UNION) {
                 // Unions could exist only in form of [type, null],
-                // which means nullable type
+                // which means optional value
                 List<Schema> unionTypes = schema.getTypes();
                 if (unionTypes.size() != 2 || unionTypes.get(1).getType() != Schema.Type.NULL)
                     throw new IllegalStateException("Unsupported union type " + schema);
