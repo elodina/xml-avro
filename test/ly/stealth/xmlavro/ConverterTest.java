@@ -8,7 +8,6 @@ import org.junit.Test;
 import java.util.Arrays;
 
 import static junit.framework.Assert.*;
-import static junit.framework.Assert.assertEquals;
 
 public class ConverterTest {
     @Test
@@ -311,7 +310,7 @@ public class ConverterTest {
                      "</root>";
 
         GenericData.Record record = Converter.createDatum(schema, xml);
-        assertEquals(new String[] {"1", "2", "3"}, record.get("value"));
+        assertEquals(Arrays.asList("1", "2", "3"), record.get("value"));
     }
 
     @Test

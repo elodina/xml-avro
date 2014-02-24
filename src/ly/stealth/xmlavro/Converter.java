@@ -382,8 +382,22 @@ public class Converter {
                 Schema.Field field = getFieldBySource(schema, new Source(child.getNodeName(), false));
 
                 if (field != null) {
-                    Object datum = createDatum(field.schema(), child);
-                    record.put(field.name(), datum);
+                    boolean array = field.schema().getType() == Schema.Type.ARRAY;
+                    Object datum = createDatum(!array ? field.schema() : field.schema().getElementType(), child);
+
+                    if (!array)
+                        record.put(field.name(), datum);
+                    else {
+                        @SuppressWarnings("unchecked")
+                        List<Object> values = (List<Object>) record.get(field.name());
+
+                        if (values == null) {
+                            values = new ArrayList<>();
+                            record.put(field.name(), values);
+                        }
+
+                        values.add(datum);
+                    }
                 } else {
                     Schema.Field anyField = schema.getField(WILDCARD);
                     if (anyField == null)
