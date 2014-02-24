@@ -99,7 +99,7 @@ public class Converter {
             XSElementDeclaration el = getRootElement();
             XSTypeDefinition type = el.getTypeDefinition();
 
-            return createSchema(false, type);
+            return createSchema(type, false, false);
         }
 
         private XSElementDeclaration getRootElement() {
@@ -116,7 +116,7 @@ public class Converter {
             return (XSElementDeclaration) elMap.item(0);
         }
 
-        private Schema createSchema(boolean optional, XSTypeDefinition type) {
+        private Schema createSchema(XSTypeDefinition type, boolean optional, boolean array) {
             Schema schema = schemas.get(type.getName());
 
             if (schema == null) {
@@ -126,9 +126,11 @@ public class Converter {
                     schema = createRecordSchema((XSComplexTypeDefinition) type);
             }
 
-            if (optional) {
-                Schema nullSchema = Schema.create(Schema.Type.NULL);
-                schema = Schema.createUnion(Arrays.asList(schema, nullSchema));
+            if (array)
+                schema = Schema.createArray(schema);
+            else if (optional) {
+                Schema optionalSchema = Schema.create(Schema.Type.NULL);
+                schema = Schema.createUnion(Arrays.asList(schema, optionalSchema));
             }
 
             return schema;
@@ -154,7 +156,7 @@ public class Converter {
                 XSAttributeDeclaration attrDecl = attrUse.getAttrDeclaration();
 
                 boolean optional = !attrUse.getRequired();
-                Schema.Field field = createField(fields.values(), attrDecl, attrDecl.getTypeDefinition(), optional);
+                Schema.Field field = createField(fields.values(), attrDecl, attrDecl.getTypeDefinition(), optional, false);
                 fields.put(field.getProp(SOURCE), field);
             }
 
@@ -172,14 +174,15 @@ public class Converter {
 
                     for (int j = 0; j < particles.getLength(); j++) {
                         XSParticle particle = (XSParticle) particles.item(j);
+                        boolean optional = particle.getMinOccurs() == 0;
+                        boolean array = particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded();
+
                         XSTerm term = particle.getTerm();
 
                         switch (term.getType()) {
                             case XSConstants.ELEMENT_DECLARATION:
                                 XSElementDeclaration el = (XSElementDeclaration) term;
-                                boolean optional = particle.getMinOccurs() == 0;
-
-                                Schema.Field field = createField(fields.values(), el, el.getTypeDefinition(), optional);
+                                Schema.Field field = createField(fields.values(), el, el.getTypeDefinition(), optional, array);
                                 fields.put(field.getProp(SOURCE), field);
                                 break;
                             case XSConstants.MODEL_GROUP:
@@ -187,8 +190,7 @@ public class Converter {
                                 collectElementFields(subGroup);
                                 break;
                             case XSConstants.WILDCARD:
-                                optional = particle.getMinOccurs() == 0;
-                                field = createField(fields.values(), term, null, optional);
+                                field = createField(fields.values(), term, null, optional, array);
                                 fields.put(field.getProp(SOURCE), field);
                                 break;
                             default:
@@ -201,7 +203,7 @@ public class Converter {
             return new ArrayList<>(fields.values());
         }
 
-        private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type, boolean optional) {
+        private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type, boolean optional, boolean array) {
             List<Short> supportedTypes = Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION, XSConstants.WILDCARD);
             if (!supportedTypes.contains(source.getType()))
                 throw new IllegalArgumentException("Invalid source object type " + source.getType());
@@ -212,7 +214,7 @@ public class Converter {
                 return new Schema.Field(WILDCARD, map, null, null);
             }
 
-            Schema fieldSchema = createSchema(optional, type);
+            Schema fieldSchema = createSchema(type, optional, array);
 
             String name = validName(source.getName());
             name = uniqueFieldName(fields, name);

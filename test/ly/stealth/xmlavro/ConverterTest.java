@@ -287,7 +287,7 @@ public class ConverterTest {
     }
 
     @Test
-    public void valueArrays() {
+    public void arrayValues() {
         String xsd =
                 "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
                 "  <xs:element name='root'>" +
@@ -302,7 +302,7 @@ public class ConverterTest {
         Schema schema = Converter.createSchema(xsd);
         Schema.Field valueField = schema.getField("value");
         assertEquals(Schema.Type.ARRAY, valueField.schema().getType());
-        assertEquals(Schema.Type.STRING, valueField.schema().getValueType().getType());
+        assertEquals(Schema.Type.STRING, valueField.schema().getElementType().getType());
 
         String xml = "<root>" +
                      "  <value>1</value>" +
