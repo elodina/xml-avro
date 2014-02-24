@@ -168,39 +168,41 @@ public class Converter {
                 throw new UnsupportedOperationException("Unsupported term type " + term.getType());
 
             XSModelGroup group = (XSModelGroup) term;
-            new Object() {
-                void collectElementFields(XSModelGroup group) {
-                    XSObjectList particles = group.getParticles();
-
-                    for (int j = 0; j < particles.getLength(); j++) {
-                        XSParticle particle = (XSParticle) particles.item(j);
-                        boolean optional = particle.getMinOccurs() == 0 || group.getCompositor() == XSModelGroup.COMPOSITOR_CHOICE;
-                        boolean array = particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded();
-
-                        XSTerm term = particle.getTerm();
-
-                        switch (term.getType()) {
-                            case XSConstants.ELEMENT_DECLARATION:
-                                XSElementDeclaration el = (XSElementDeclaration) term;
-                                Schema.Field field = createField(fields.values(), el, el.getTypeDefinition(), optional, array);
-                                fields.put(field.getProp(SOURCE), field);
-                                break;
-                            case XSConstants.MODEL_GROUP:
-                                XSModelGroup subGroup = (XSModelGroup) term;
-                                collectElementFields(subGroup);
-                                break;
-                            case XSConstants.WILDCARD:
-                                field = createField(fields.values(), term, null, optional, array);
-                                fields.put(field.getProp(SOURCE), field);
-                                break;
-                            default:
-                                throw new UnsupportedOperationException("Unsupported term type " + term.getType());
-                        }
-                    }
-                }
-            }.collectElementFields(group);
+            createGroupFields(group, fields, false);
 
             return new ArrayList<>(fields.values());
+        }
+
+        private void createGroupFields(XSModelGroup group, Map<String, Schema.Field> fields, boolean forceOptional) {
+            XSObjectList particles = group.getParticles();
+
+            for (int j = 0; j < particles.getLength(); j++) {
+                XSParticle particle = (XSParticle) particles.item(j);
+                boolean insideChoice = group.getCompositor() == XSModelGroup.COMPOSITOR_CHOICE;
+
+                boolean optional = insideChoice || particle.getMinOccurs() == 0;
+                boolean array = particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded();
+
+                XSTerm term = particle.getTerm();
+
+                switch (term.getType()) {
+                    case XSConstants.ELEMENT_DECLARATION:
+                        XSElementDeclaration el = (XSElementDeclaration) term;
+                        Schema.Field field = createField(fields.values(), el, el.getTypeDefinition(), forceOptional || optional, array);
+                        fields.put(field.getProp(SOURCE), field);
+                        break;
+                    case XSConstants.MODEL_GROUP:
+                        XSModelGroup subGroup = (XSModelGroup) term;
+                        createGroupFields(subGroup, fields, forceOptional || insideChoice);
+                        break;
+                    case XSConstants.WILDCARD:
+                        field = createField(fields.values(), term, null, forceOptional || optional, array);
+                        fields.put(field.getProp(SOURCE), field);
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("Unsupported term type " + term.getType());
+                }
+            }
         }
 
         private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type, boolean optional, boolean array) {
