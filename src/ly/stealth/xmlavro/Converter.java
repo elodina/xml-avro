@@ -348,9 +348,12 @@ public class Converter {
             return (T) createDatum(schema, el);
         }
 
-        private Object createDatum(Schema schema, Element el) {
+        private Object createDatum(Schema schema, Node source) {
+            if (!Arrays.asList(Node.ELEMENT_NODE, Node.ATTRIBUTE_NODE).contains(source.getNodeType()))
+                throw new IllegalArgumentException("Unsupported node type " + source.getNodeType());
+
             if (PRIMITIVES.contains(schema.getType()))
-                return createValue(schema.getType(), el.getTextContent());
+                return createValue(schema.getType(), source.getTextContent());
 
             if (schema.getType() == Schema.Type.UNION) {
                 // Unions could exist only in form of [type, null],
@@ -359,17 +362,35 @@ public class Converter {
                 if (unionTypes.size() != 2 || unionTypes.get(1).getType() != Schema.Type.NULL)
                     throw new IllegalStateException("Unsupported union type " + schema);
 
-                return createDatum(unionTypes.get(0), el);
+                return createDatum(unionTypes.get(0), source);
             }
 
             if (schema.getType() == Schema.Type.RECORD)
-                return createRecord(schema, el);
+                return createRecord(schema, (Element)source);
 
             throw new IllegalStateException("Unsupported schema type " + schema.getType());
         }
 
         private Object createValue(Schema.Type type, String text) {
-            return parseValue(type, text);
+            if (type == Schema.Type.BOOLEAN)
+                return "true".equals(text) || "1".equals(text);
+
+            if (type == Schema.Type.INT)
+                return Integer.parseInt(text);
+
+            if (type == Schema.Type.LONG)
+                return Long.parseLong(text);
+
+            if (type == Schema.Type.FLOAT)
+                return Float.parseFloat(text);
+
+            if (type == Schema.Type.DOUBLE)
+                return Double.parseDouble(text);
+
+            if (type == Schema.Type.STRING)
+                return text;
+
+            throw new UnsupportedOperationException("Unsupported type " + type);
         }
 
         private GenericData.Record createRecord(Schema schema, Element el) {
@@ -425,7 +446,8 @@ public class Converter {
                 if (field == null)
                     throw new IllegalStateException("Unsupported attribute " + attr.getName());
 
-                record.put(field.name(), attr.getValue());
+                Object datum = createDatum(field.schema(), attr);
+                record.put(field.name(), datum);
             }
 
             return record;
@@ -437,28 +459,6 @@ public class Converter {
                     return field;
 
             return null;
-        }
-
-        private  Object parseValue(Schema.Type type, String text) {
-            if (type == Schema.Type.BOOLEAN)
-                return "true".equals(text) || "1".equals(text);
-
-            if (type == Schema.Type.INT)
-                return Integer.parseInt(text);
-
-            if (type == Schema.Type.LONG)
-                return Long.parseLong(text);
-
-            if (type == Schema.Type.FLOAT)
-                return Float.parseFloat(text);
-
-            if (type == Schema.Type.DOUBLE)
-                return Double.parseDouble(text);
-
-            if (type == Schema.Type.STRING)
-                return text;
-
-            throw new UnsupportedOperationException("Unsupported type " + type);
         }
 
         private String getContentAsText(Element el) {
