@@ -1,6 +1,6 @@
 # xml-avro
 This project provides Converter to convert generic xsd/xml to asvc/avro files.
-Avro schema and avro files are generated from xsd schema and xsd files.
+Avro schema and avro file are generated from xsd schema and xsd file.
 
 ## Running Project
 1. git clone;
