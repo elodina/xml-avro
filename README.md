@@ -1,6 +1,6 @@
 # xml-avro
-
-This project provides Converter to convert generic xml file to avro and vice versa.
+This project provides Converter to convert generic xsd/xml to asvc/avro files.
+Avro schema and avro files are generated from xsd schema and xsd files.
 
 ## Running Project
 1. git clone;
@@ -10,19 +10,6 @@ This project provides Converter to convert generic xml file to avro and vice ver
 
 ## Usage
 ```
-Usage:
- {xml|avro} input-file output-file
+XML Avro converter.
+Usage: <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}
 ```
-
-## Restrictions
-Only restricted set of XML nodes is supported:
-- elements;
-- attributes;
-- text nodes;
-
-Following is not supported:
-- namespaces;
-- processing instructions;
-- xml declarations;
-- CDATA;
-- comments;
