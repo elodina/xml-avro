@@ -13,3 +13,7 @@ Avro schema and avro file are generated from xsd schema and xsd file.
 XML Avro converter.
 Usage: <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}
 ```
+## Restrictions
+Converter has following restriction:
+- single schema namespace is supported;
+- no complex type extension is supported

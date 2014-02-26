@@ -355,12 +355,19 @@ public class ConverterTest {
     }
 
     @Test
-    public void SchemaBuilder_validaName() {
-        assertEquals("", Converter.SchemaBuilder.validName(""));
+    public void SchemaBuilder_validName() {
+        Converter.SchemaBuilder builder = new Converter.SchemaBuilder("<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'/>");
 
-        assertEquals("a1", Converter.SchemaBuilder.validName("$a#1"));
+        assertNull(builder.validName(null));
+        assertEquals("", builder.validName(""));
 
-        assertEquals("a_1", Converter.SchemaBuilder.validName("a.1"));
-        assertEquals("a_1", Converter.SchemaBuilder.validName("a-1"));
+        assertEquals("a1", builder.validName("$a#1"));
+
+        assertEquals("a_1", builder.validName("a.1"));
+        assertEquals("a_1", builder.validName("a-1"));
+
+        // built-in types
+        assertEquals("string0", builder.validName("string"));
+        assertEquals("record1", builder.validName("record"));
     }
 }

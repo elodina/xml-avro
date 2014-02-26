@@ -117,13 +117,14 @@ public class Converter {
         }
 
         private Schema createSchema(XSTypeDefinition type, boolean optional, boolean array) {
-            Schema schema = schemas.get(type.getName());
+            Schema schema;
 
-            if (schema == null) {
-                if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
-                    schema = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
-                else
-                    schema = createRecordSchema((XSComplexTypeDefinition) type);
+            if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
+                schema = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
+            else {
+                String name = typeName(type);
+                schema = schemas.get(name);
+                if (schema == null) schema = createRecordSchema(name, (XSComplexTypeDefinition) type);
             }
 
             if (array)
@@ -136,12 +137,9 @@ public class Converter {
             return schema;
         }
 
-        private Schema createRecordSchema(XSComplexTypeDefinition type) {
-            String name = type.getName();
-            if (name == null) name = nextTypeName();
-
+        private Schema createRecordSchema(String name, XSComplexTypeDefinition type) {
             Schema record = Schema.createRecord(name, null, null, false);
-            if (name != null) schemas.put(name, record);
+            schemas.put(name, record);
 
             record.setFields(createFields(type));
             return record;
@@ -251,7 +249,14 @@ public class Converter {
             return name + (duplicates > 0 ? duplicates - 1 : "");
         }
 
-        static String validName(String name) {
+        String typeName(XSTypeDefinition type) {
+            String name = validName(type.getName());
+            return name != null ? name : nextTypeName();
+        }
+
+        String validName(String name) {
+            if (name == null) return null;
+
             char[] chars = name.toCharArray();
             char[] result = new char[chars.length];
 
@@ -274,7 +279,15 @@ public class Converter {
                 }
             }
 
-            return new String(result, 0, p);
+            String s = new String(result, 0, p);
+
+            // handle built-in types
+            try {
+                Schema.Type.valueOf(s.toUpperCase());
+                s += typeName++;
+            } catch (IllegalArgumentException ignore) {}
+
+            return s;
         }
 
         private int typeName;
