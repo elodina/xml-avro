@@ -15,5 +15,5 @@ Usage: <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}
 ```
 ## Restrictions
 Converter has following restriction:
-- single schema namespace is supported;
-- no complex type extension is supported
+- xml docs with multiple namespaces are not supported;
+- complex type extension is not supported;
