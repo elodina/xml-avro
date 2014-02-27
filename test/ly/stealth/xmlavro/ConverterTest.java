@@ -356,7 +356,7 @@ public class ConverterTest {
 
     @Test
     public void SchemaBuilder_validName() {
-        Converter.SchemaBuilder builder = new Converter.SchemaBuilder("<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'/>");
+        Converter.SchemaBuilder builder = new Converter.SchemaBuilder();
 
         assertNull(builder.validName(null));
         assertEquals("", builder.validName(""));

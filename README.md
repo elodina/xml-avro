@@ -11,7 +11,7 @@ Avro schema and avro file are generated from xsd schema and xsd file.
 ## Usage
 ```
 XML Avro converter.
-Usage: <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}
+Usage: "{-d|--debug} {-b|--baseDir <baseDir>} <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}"
 ```
 ## Restrictions
 Converter has following restriction:

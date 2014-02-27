@@ -2,8 +2,11 @@ package ly.stealth.xmlavro;
 
 import com.sun.org.apache.xerces.internal.dom.DOMInputImpl;
 import com.sun.org.apache.xerces.internal.impl.xs.XMLSchemaLoader;
+import com.sun.org.apache.xerces.internal.xni.XMLResourceIdentifier;
 import com.sun.org.apache.xerces.internal.xni.XNIException;
+import com.sun.org.apache.xerces.internal.xni.parser.XMLEntityResolver;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLErrorHandler;
+import com.sun.org.apache.xerces.internal.xni.parser.XMLInputSource;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
 import com.sun.org.apache.xerces.internal.xs.*;
 import org.apache.avro.Schema;
@@ -26,85 +29,98 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.*;
 
 public class Converter {
     public static final String SOURCE = "source";
     public static final String WILDCARD = "others";
 
-    public static Schema createSchema(String xsd) { return new SchemaBuilder(xsd).createSchema(); }
-    public static Schema createSchema(File file) throws IOException { return new SchemaBuilder(file).createSchema(); }
-    public static Schema createSchema(Reader reader) { return new SchemaBuilder(reader).createSchema(); }
-    public static Schema createSchema(InputStream stream) { return new SchemaBuilder(stream).createSchema(); }
+    public static Schema createSchema(String xsd) { return new SchemaBuilder().createSchema(xsd); }
+    public static Schema createSchema(File file) throws IOException { return new SchemaBuilder().createSchema(file); }
+    public static Schema createSchema(Reader reader) { return new SchemaBuilder().createSchema(reader); }
+    public static Schema createSchema(InputStream stream) { return new SchemaBuilder().createSchema(stream); }
 
-    public static <T> T createDatum(Schema schema, File file) { return new DatumBuilder(schema, file).createDatum(); }
-    public static <T> T createDatum(Schema schema, String xml) { return new DatumBuilder(schema, xml).createDatum(); }
-    public static <T> T createDatum(Schema schema, Reader reader) { return new DatumBuilder(schema, reader).createDatum(); }
-    public static <T> T createDatum(Schema schema, InputStream stream) { return new DatumBuilder(schema, stream).createDatum(); }
+    public static <T> T createDatum(Schema schema, File file) { return new DatumBuilder(schema).createDatum(file); }
+    public static <T> T createDatum(Schema schema, String xml) { return new DatumBuilder(schema).createDatum(xml); }
+    public static <T> T createDatum(Schema schema, Reader reader) { return new DatumBuilder(schema).createDatum(reader); }
+    public static <T> T createDatum(Schema schema, InputStream stream) { return new DatumBuilder(schema).createDatum(stream); }
 
     public static class SchemaBuilder {
-        private static XSModel parse(File file) throws IOException {
-            try (InputStream stream = new FileInputStream(file)) {
-                return parse(stream);
-            }
-        }
+        private boolean debug;
+        private File baseDir;
 
-        private static XSModel parse(InputStream stream) {
-            DOMInputImpl input = new DOMInputImpl();
-            input.setByteStream(stream);
-            return parse(input);
-        }
-
-        private static XSModel parse(Reader reader) {
-            DOMInputImpl input = new DOMInputImpl();
-            input.setCharacterStream(reader);
-            return parse(input);
-        }
-
-        private static XSModel parse(LSInput input) {
-            ErrorHandler errorHandler = new ErrorHandler();
-
-            XMLSchemaLoader loader = new XMLSchemaLoader();
-            loader.setErrorHandler(errorHandler);
-            XSModel schema = loader.load(input);
-
-            if (errorHandler.exception != null)
-                throw errorHandler.exception;
-
-            return schema;
-        }
-
-        private XSModel model;
         private String rootElementName;
+        private String rootElementNs;
 
         private Map<String, Schema> schemas = new LinkedHashMap<>();
 
-        public SchemaBuilder(String xsd) { this(parse(new StringReader(xsd))); }
+        public boolean getDebug() { return debug; }
+        public void setDebug(boolean debug) { this.debug = debug; }
 
-        public SchemaBuilder(File file) throws IOException { this(parse(file)); }
+        public File getBaseDir() { return baseDir; }
+        public void setBaseDir(File baseDir) { this.baseDir = baseDir; }
 
-        public SchemaBuilder(Reader reader) { this(parse(reader)); }
-        public SchemaBuilder(InputStream stream) { this(parse(stream)); }
-
-        private SchemaBuilder(XSModel model) { this.model = model; }
 
         public String getRootElementName() { return rootElementName; }
         public void setRootElementName(String rootElementName) { this.rootElementName = rootElementName; }
 
+        public String getRootElementNs() { return rootElementNs; }
+        public void setRootElementNs(String rootElementNs) { this.rootElementNs = rootElementNs; }
 
-        @SuppressWarnings("unchecked")
-        public Schema createSchema() {
-            schemas.clear();
-
-            XSElementDeclaration el = getRootElement();
-            XSTypeDefinition type = el.getTypeDefinition();
-
-            return createSchema(type, false, false);
+        public Schema createSchema(String xsd) {
+            return createSchema(new StringReader(xsd));
         }
 
-        private XSElementDeclaration getRootElement() {
+        public Schema createSchema(File file) throws IOException {
+            try (InputStream stream = new FileInputStream(file)) {
+                return createSchema(stream);
+            }
+        }
+
+        public Schema createSchema(Reader reader) {
+            DOMInputImpl input = new DOMInputImpl();
+            input.setCharacterStream(reader);
+            return createSchema(input);
+        }
+
+        public Schema createSchema(InputStream stream) {
+            DOMInputImpl input = new DOMInputImpl();
+            input.setByteStream(stream);
+            return createSchema(input);
+        }
+
+        public Schema createSchema(LSInput input) {
+            ErrorHandler errorHandler = new ErrorHandler();
+
+            XMLSchemaLoader loader = new XMLSchemaLoader();
+            if (baseDir != null)
+                loader.setEntityResolver(new EntityResolver(baseDir));
+
+            loader.setErrorHandler(errorHandler);
+            XSModel model = loader.load(input);
+
+            if (errorHandler.exception != null)
+                throw errorHandler.exception;
+
+            return createSchema(model);
+        }
+
+        public Schema createSchema(XSModel model) {
+            debug("Creating root schema");
+            schemas.clear();
+
+            XSElementDeclaration el = getRootElement(model);
+            debug("Got root element declaration " + el.getName() + "{" + el.getNamespace() + "}");
+
+            XSTypeDefinition type = el.getTypeDefinition();
+            return createTypeSchema(type, false, false);
+        }
+
+        private XSElementDeclaration getRootElement(XSModel model) {
             if (rootElementName != null) {
-                XSElementDeclaration el = model.getElementDeclaration(rootElementName, null);
+                XSElementDeclaration el = model.getElementDeclaration(rootElementName, rootElementNs);
                 if (el == null) throw new IllegalStateException("Root element declaration " + rootElementName + " not found");
                 return el;
             }
@@ -116,13 +132,17 @@ public class Converter {
             return (XSElementDeclaration) elMap.item(0);
         }
 
-        private Schema createSchema(XSTypeDefinition type, boolean optional, boolean array) {
+        private int typeLevel;
+        private Schema createTypeSchema(XSTypeDefinition type, boolean optional, boolean array) {
+            typeLevel++;
             Schema schema;
 
             if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
                 schema = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
             else {
                 String name = typeName(type);
+                debug("Creating schema for " + (type.getAnonymous() ? "anonymous type " + name : "type " + type.getName()));
+
                 schema = schemas.get(name);
                 if (schema == null) schema = createRecordSchema(name, (XSComplexTypeDefinition) type);
             }
@@ -134,6 +154,7 @@ public class Converter {
                 schema = Schema.createUnion(Arrays.asList(schema, optionalSchema));
             }
 
+            typeLevel--;
             return schema;
         }
 
@@ -214,7 +235,7 @@ public class Converter {
                 return new Schema.Field(WILDCARD, map, null, null);
             }
 
-            Schema fieldSchema = createSchema(type, optional, array);
+            Schema fieldSchema = createTypeSchema(type, optional, array);
 
             String name = validName(source.getName());
             name = uniqueFieldName(fields, name);
@@ -293,6 +314,15 @@ public class Converter {
         private int typeName;
         private String nextTypeName() { return "type" + typeName++; }
 
+        private void debug(String s) {
+            if (!debug) return;
+
+            char[] prefix = new char[typeLevel];
+            Arrays.fill(prefix, '-');
+
+            if (debug) System.out.println(new String(prefix) + s);
+        }
+
         private static class ErrorHandler implements XMLErrorHandler {
             XMLParseException exception;
 
@@ -311,18 +341,33 @@ public class Converter {
                 if (this.exception == null) this.exception = exception;
             }
         }
+
+        private class EntityResolver implements XMLEntityResolver {
+            private File baseDir;
+            private EntityResolver(File baseDir) { this.baseDir = baseDir; }
+
+            @Override
+            public XMLInputSource resolveEntity(XMLResourceIdentifier id) throws XNIException, IOException {
+                String systemId = id.getLiteralSystemId();
+                debug("Resolving " + systemId);
+
+                boolean absolute = true;
+                try { absolute = new URI(systemId).isAbsolute(); }
+                catch (URISyntaxException ignore) {}
+
+                if (absolute) return null;
+
+                File file = new File(baseDir, systemId);
+                XMLInputSource source = new XMLInputSource(id);
+                source.setByteStream(new FileInputStream(file));
+
+                return source;
+            }
+        }
     }
 
     public static class DatumBuilder {
-        private static Element parse(File file) {
-            try (InputStream stream = new FileInputStream(file)) {
-                return parse(new InputSource(stream));
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        private static Element parse(InputSource source) {
+        public static Element parse(InputSource source) {
             try {
                 DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
                 builderFactory.setNamespaceAware(true);
@@ -343,25 +388,47 @@ public class Converter {
             ));
         }
 
-        public DatumBuilder(Schema schema, File file) { this(schema, parse(file)); }
-        public DatumBuilder(Schema schema, String xml) { this(schema, new StringReader(xml)); }
-        public DatumBuilder(Schema schema, Reader reader) { this(schema, parse(new InputSource(reader))); }
-        public DatumBuilder(Schema schema, InputStream stream) { this(schema, parse(new InputSource(stream))); }
-
         private Schema schema;
-        private Element el;
 
-        private DatumBuilder(Schema schema, Element el) {
+        public DatumBuilder(Schema schema) {
             this.schema = schema;
-            this.el = el;
         }
 
         @SuppressWarnings("unchecked")
-        public <T> T createDatum() {
-            return (T) createDatum(schema, el);
+        public <T> T createDatum(String xml) {
+            return createDatum(new StringReader(xml));
         }
 
-        private Object createDatum(Schema schema, Node source) {
+        @SuppressWarnings("unchecked")
+        public <T> T createDatum(File file) {
+            try (InputStream stream = new FileInputStream(file)) {
+                return createDatum(stream);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T> T createDatum(Reader reader) {
+            return createDatum(new InputSource(reader));
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T> T createDatum(InputStream stream) {
+            return createDatum(new InputSource(stream));
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T> T createDatum(InputSource source) {
+            return createDatum(parse(source));
+        }
+
+        @SuppressWarnings("unchecked")
+        public <T> T createDatum(Element el) {
+            return (T) createNodeDatum(schema, el);
+        }
+
+        private Object createNodeDatum(Schema schema, Node source) {
             if (!Arrays.asList(Node.ELEMENT_NODE, Node.ATTRIBUTE_NODE).contains(source.getNodeType()))
                 throw new IllegalArgumentException("Unsupported node type " + source.getNodeType());
 
@@ -375,7 +442,7 @@ public class Converter {
                 if (unionTypes.size() != 2 || unionTypes.get(1).getType() != Schema.Type.NULL)
                     throw new IllegalStateException("Unsupported union type " + schema);
 
-                return createDatum(unionTypes.get(0), source);
+                return createNodeDatum(unionTypes.get(0), source);
             }
 
             if (schema.getType() == Schema.Type.RECORD)
@@ -424,7 +491,7 @@ public class Converter {
 
                 if (field != null) {
                     boolean array = field.schema().getType() == Schema.Type.ARRAY;
-                    Object datum = createDatum(!array ? field.schema() : field.schema().getElementType(), child);
+                    Object datum = createNodeDatum(!array ? field.schema() : field.schema().getElementType(), child);
 
                     if (!array)
                         record.put(field.name(), datum);
@@ -459,7 +526,7 @@ public class Converter {
                 if (field == null)
                     throw new IllegalStateException("Unsupported attribute " + attr.getName());
 
-                Object datum = createDatum(field.schema(), attr);
+                Object datum = createNodeDatum(field.schema(), attr);
                 record.put(field.name(), datum);
             }
 
@@ -533,39 +600,104 @@ public class Converter {
         }
     }
 
-    public static void main(String[] args) throws IOException {
-        if (args.length < 2 || args.length > 4) {
-            System.out.println("XML Avro converter.\nUsage: <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}\n");
-            return;
+    private static class Options {
+        static final String USAGE = "{-d|--debug} {-b|--baseDir <baseDir>} <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}";
+
+        File xsdFile;
+        File xmlFile;
+
+        File avscFile;
+        File avroFile;
+
+        boolean debug;
+        File baseDir;
+
+        Options(String... args) {
+            List<String> files = new ArrayList<>();
+
+            for (int i = 0; i < args.length; i++) {
+                String arg = args[i];
+
+                if (arg.startsWith("-"))
+                    switch (arg) {
+                        case "-d":
+                        case "--debug":
+                            debug = true;
+                            break;
+                        case "-b":
+                        case "--baseDir":
+                            if (i == args.length - 1) throw new IllegalArgumentException("Base dir required");
+                            i++;
+                            baseDir = new File(args[i]);
+                            break;
+                        default:
+                            throw new IllegalArgumentException("Unsupported option " + arg);
+                    }
+                else
+                    files.add(arg);
+            }
+
+            if (files.size() < 2 || files.size() > 4)
+                throw new IllegalArgumentException("Incorrect number of in/out files. Expected [2..4]");
+
+            xsdFile = replaceBaseDir(files.get(0), baseDir);
+            xmlFile = replaceBaseDir(files.get(1), baseDir);
+
+            avscFile = files.size() > 2 ? replaceBaseDir(files.get(3), baseDir) : replaceExtension(xsdFile, "avsc");
+            avroFile = files.size() > 3 ? replaceBaseDir(files.get(4), baseDir) : replaceExtension(xmlFile, "avro");
         }
 
-        File xsdFile = new File(args[0]);
-        File xmlFile = new File(args[1]);
+        private static File replaceExtension(File file, String newExtension) {
+            String fileName = file.getPath();
 
-        File avscFile = args.length > 2 ? new File(args[3]) : replaceExtension(xsdFile, "avsc");
-        File avroFile = args.length > 3 ? new File(args[4]) : replaceExtension(xmlFile, "avro");
+            int dotIdx = fileName.lastIndexOf('.');
+            if (dotIdx != -1) fileName = fileName.substring(0, dotIdx);
 
-        System.out.println("converting: \n" + xsdFile + " -> " + avscFile + "\n" + xmlFile + " -> " + avroFile);
-
-        Schema schema = createSchema(xsdFile);
-        try (Writer writer = new FileWriter(avscFile)) {
-            writer.write(schema.toString(true));
+            return new File(fileName + "." + newExtension);
         }
 
-        Object datum = createDatum(schema, xmlFile);
-
-        try (OutputStream stream = new FileOutputStream(avroFile)) {
-            DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
-            datumWriter.write(datum, EncoderFactory.get().directBinaryEncoder(stream, null));
+        private static File replaceBaseDir(String path, File baseDir) {
+            File file = new File(path);
+            if (baseDir == null || file.isAbsolute()) return file;
+            return new File(baseDir, file.getPath());
         }
     }
 
-    private static File replaceExtension(File file, String newExtension) {
-        String fileName = file.getPath();
+    public static void main(String... args) throws IOException {
+        Options opts;
+        try {
+            opts = new Options(args);
+        } catch (IllegalArgumentException e) {
+            System.out.println("XML Avro converter.\nError: " + e.getMessage() + "\n" + "Usage: " + Options.USAGE + "\n");
+            System.exit(1);
+            return;
+        }
 
-        int dotIdx = fileName.lastIndexOf('.');
-        if (dotIdx != -1) fileName = fileName.substring(0, dotIdx);
+        System.out.println("Converting: \n" + opts.xsdFile + " -> " + opts.avscFile + "\n" + opts.xmlFile + " -> " + opts.avroFile);
 
-        return new File(fileName + "." + newExtension);
+        Element el;
+        try (InputStream stream = new FileInputStream(opts.xmlFile)) {
+            el = DatumBuilder.parse(new InputSource(stream));
+        }
+
+        SchemaBuilder schemaBuilder = new SchemaBuilder();
+        schemaBuilder.setDebug(opts.debug);
+        schemaBuilder.setBaseDir(opts.baseDir);
+
+        schemaBuilder.setRootElementName(el.getTagName());
+        schemaBuilder.setRootElementNs(el.getNamespaceURI());
+        Schema schema = schemaBuilder.createSchema(opts.xsdFile);
+
+        try (Writer writer = new FileWriter(opts.avscFile)) {
+            writer.write(schema.toString(true));
+        }
+
+        DatumBuilder datumBuilder = new DatumBuilder(schema);
+        Object datum = datumBuilder.createDatum(el);
+
+        try (OutputStream stream = new FileOutputStream(opts.avroFile)) {
+            DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
+            datumWriter.write(datum, EncoderFactory.get().directBinaryEncoder(stream, null));
+        }
     }
 }
