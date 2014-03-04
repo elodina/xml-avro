@@ -22,6 +22,7 @@ import org.apache.avro.generic.GenericData;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import static junit.framework.Assert.*;
 
@@ -233,7 +234,7 @@ public class ConverterTest {
         record = Converter.createDatum(schema, xml);
 
         assertEquals("field", record.get("field"));
-        assertNull(record.get(Converter.WILDCARD));
+        assertEquals(Collections.emptyMap(), record.get(Converter.WILDCARD));
     }
 
     @Test

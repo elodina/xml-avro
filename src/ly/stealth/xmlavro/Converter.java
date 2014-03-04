@@ -492,10 +492,14 @@ public class Converter {
         private GenericData.Record createRecord(Schema schema, Element el) {
             GenericData.Record record = new GenericData.Record(schema);
 
-            // initialize arrays
-            for (Schema.Field field : record.getSchema().getFields())
+            // initialize arrays and wildcard maps
+            for (Schema.Field field : record.getSchema().getFields()) {
                 if (field.schema().getType() == Schema.Type.ARRAY)
                     record.put(field.name(), new ArrayList<>());
+
+                if (field.name().equals(WILDCARD))
+                    record.put(field.name(), new HashMap<String, Object>());
+            }
 
             NodeList nodes = el.getChildNodes();
             for (int i = 0; i < nodes.getLength(); i++) {
@@ -503,7 +507,7 @@ public class Converter {
                 if (node.getNodeType() != Node.ELEMENT_NODE) continue;
 
                 Element child = (Element) node;
-                Schema.Field field = getFieldBySource(schema, new Source(child.getNodeName(), false));
+                Schema.Field field = getFieldBySource(schema, new Source(child.getLocalName(), false));
 
                 if (field != null) {
                     boolean array = field.schema().getType() == Schema.Type.ARRAY;
@@ -521,12 +525,9 @@ public class Converter {
                     if (anyField == null)
                         throw new IllegalStateException("Type doesn't support any element");
 
-                    if (record.get(WILDCARD) == null)
-                        record.put(WILDCARD, new HashMap<String, Object>());
-
                     @SuppressWarnings("unchecked")
                     Map<String, String> map = (HashMap<String, String>) record.get(WILDCARD);
-                    map.put(child.getNodeName(), getContentAsText(child));
+                    map.put(child.getLocalName(), getContentAsText(child));
                 }
             }
 
@@ -573,7 +574,7 @@ public class Converter {
             String result = "" + writer.getBuffer();
 
             //trim element's start tag
-            int startTag = result.indexOf(el.getNodeName());
+            int startTag = result.indexOf(el.getLocalName());
             startTag = result.indexOf('>', startTag);
             result = result.substring(startTag + 1);
 
@@ -700,7 +701,7 @@ public class Converter {
         schemaBuilder.setDebug(opts.debug);
         schemaBuilder.setBaseDir(opts.baseDir);
 
-        schemaBuilder.setRootElementName(el.getTagName());
+        schemaBuilder.setRootElementName(el.getLocalName());
         schemaBuilder.setRootElementNs(el.getNamespaceURI());
         Schema schema = schemaBuilder.createSchema(opts.xsdFile);
 
