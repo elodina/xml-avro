@@ -180,10 +180,10 @@ public class ConverterTest {
         assertEquals(2, schema.getFields().size());
         Schema.Field field = schema.getField("field");
         assertNotNull(field);
-        assertEquals("" + new Converter.Source("field", true), field.getProp(Converter.SOURCE));
+        assertEquals("" + new Source("field", true), field.getProp(Source.SOURCE));
 
         Schema.Field field0 = schema.getField("field0");
-        assertEquals("" + new Converter.Source("field", false), field0.getProp(Converter.SOURCE));
+        assertEquals("" + new Source("field", false), field0.getProp(Source.SOURCE));
 
         String xml = "<root field='value'><field>value0</field></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -208,7 +208,7 @@ public class ConverterTest {
         Schema schema = Converter.createSchema(xsd);
         assertEquals(2, schema.getFields().size());
 
-        Schema.Field wildcardField = schema.getField(Converter.WILDCARD);
+        Schema.Field wildcardField = schema.getField(Source.WILDCARD);
         assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
 
         // Two wildcard-matched elements
@@ -223,7 +223,7 @@ public class ConverterTest {
         assertEquals("field", record.get("field"));
 
         @SuppressWarnings("unchecked")
-        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(Converter.WILDCARD);
+        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(Source.WILDCARD);
 
         assertEquals(2, map.size());
         assertEquals("field0", map.get("field0"));
@@ -234,7 +234,7 @@ public class ConverterTest {
         record = Converter.createDatum(schema, xml);
 
         assertEquals("field", record.get("field"));
-        assertEquals(Collections.emptyMap(), record.get(Converter.WILDCARD));
+        assertEquals(Collections.emptyMap(), record.get(Source.WILDCARD));
     }
 
     @Test
@@ -254,8 +254,8 @@ public class ConverterTest {
         Schema schema = Converter.createSchema(xsd);
         assertEquals(1, schema.getFields().size());
 
-        Schema.Field field = schema.getField(Converter.WILDCARD);
-        assertEquals(null, field.getProp(Converter.SOURCE));
+        Schema.Field field = schema.getField(Source.WILDCARD);
+        assertEquals(null, field.getProp(Source.SOURCE));
     }
 
     @Test
@@ -373,7 +373,7 @@ public class ConverterTest {
 
     @Test
     public void SchemaBuilder_validName() {
-        Converter.SchemaBuilder builder = new Converter.SchemaBuilder();
+        SchemaBuilder builder = new SchemaBuilder();
 
         assertNull(builder.validName(null));
         assertEquals("", builder.validName(""));
