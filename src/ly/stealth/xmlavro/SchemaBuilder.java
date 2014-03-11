@@ -21,9 +21,6 @@ public class SchemaBuilder {
     private boolean debug;
     private File baseDir;
 
-    private String rootElementName;
-    private String rootElementNs;
-
     private Map<String, Schema> schemas = new LinkedHashMap<>();
 
     public boolean getDebug() { return debug; }
@@ -32,12 +29,6 @@ public class SchemaBuilder {
     public File getBaseDir() { return baseDir; }
     public void setBaseDir(File baseDir) { this.baseDir = baseDir; }
 
-
-    public String getRootElementName() { return rootElementName; }
-    public void setRootElementName(String rootElementName) { this.rootElementName = rootElementName; }
-
-    public String getRootElementNs() { return rootElementNs; }
-    public void setRootElementNs(String rootElementNs) { this.rootElementNs = rootElementNs; }
 
     public Schema createSchema(String xsd) {
         return createSchema(new StringReader(xsd));
@@ -78,28 +69,42 @@ public class SchemaBuilder {
     }
 
     public Schema createSchema(XSModel model) {
-        debug("Creating root schema");
         schemas.clear();
 
-        XSElementDeclaration el = getRootElement(model);
-        debug("Got root element declaration " + el.getName() + "{" + el.getNamespace() + "}");
+        Map<Source, Schema> schemas = new LinkedHashMap<>();
+        XSNamedMap rootEls = model.getComponents(XSConstants.ELEMENT_DECLARATION);
 
-        XSTypeDefinition type = el.getTypeDefinition();
-        return createTypeSchema(type, false, false);
-    }
+        for (int i = 0; i < rootEls.getLength(); i++) {
+            XSElementDeclaration el = (XSElementDeclaration) rootEls.item(i);
+            XSTypeDefinition type = el.getTypeDefinition();
 
-    private XSElementDeclaration getRootElement(XSModel model) {
-        if (rootElementName != null) {
-            XSElementDeclaration el = model.getElementDeclaration(rootElementName, rootElementNs);
-            if (el == null) throw new IllegalStateException("Root element declaration " + rootElementName + " not found");
-            return el;
+            debug("Processing root element " + el.getName() + "{" + el.getNamespace() + "}");
+            Schema schema = createTypeSchema(type, false, false);
+            schemas.put(new Source(el.getName()), schema);
         }
 
-        XSNamedMap elMap = model.getComponents(XSConstants.ELEMENT_DECLARATION);
-        if (elMap.getLength() == 0) throw new IllegalStateException("No root element declaration");
-        if (elMap.getLength() > 1) throw new IllegalStateException("Ambiguous root element declarations");
+        if (schemas.size() == 0) throw new IllegalStateException("No root element declaration");
+        if (schemas.size() == 1) return schemas.values().iterator().next();
 
-        return (XSElementDeclaration) elMap.item(0);
+        return createRootRecordSchema(schemas);
+    }
+
+    private Schema createRootRecordSchema(Map<Source, Schema> schemas) {
+        List<Schema.Field> fields = new ArrayList<>();
+
+        for (Source source : schemas.keySet()) {
+            Schema schema = schemas.get(source);
+            Schema nullSchema = Schema.create(Schema.Type.NULL);
+            Schema optionalSchema = Schema.createUnion(Arrays.asList(schema, nullSchema));
+
+            Schema.Field field = new Schema.Field(source.getName(), optionalSchema, null, null);
+            field.addProp(Source.SOURCE, "" + source);
+            fields.add(field);
+        }
+
+        Schema schema = Schema.createRecord(fields);
+        schema.addProp(Source.SOURCE, Source.DOCUMENT);
+        return schema;
     }
 
     private int typeLevel;
@@ -120,8 +125,8 @@ public class SchemaBuilder {
         if (array)
             schema = Schema.createArray(schema);
         else if (optional) {
-            Schema optionalSchema = Schema.create(Schema.Type.NULL);
-            schema = Schema.createUnion(Arrays.asList(schema, optionalSchema));
+            Schema nullSchema = Schema.create(Schema.Type.NULL);
+            schema = Schema.createUnion(Arrays.asList(schema, nullSchema));
         }
 
         typeLevel--;

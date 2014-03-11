@@ -4,6 +4,7 @@ import java.util.Objects;
 
 class Source {
     public static final String SOURCE = "source";
+    public static final String DOCUMENT = "document";
     public static final String WILDCARD = "others";
 
     // name of element/attribute

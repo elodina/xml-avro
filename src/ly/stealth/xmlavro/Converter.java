@@ -20,11 +20,10 @@ import org.apache.avro.Schema;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.io.EncoderFactory;
 import org.apache.avro.specific.SpecificDatumWriter;
-import org.w3c.dom.*;
-import org.xml.sax.InputSource;
 
 import java.io.*;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Converter {
     public static Schema createSchema(String xsd) { return new SchemaBuilder().createSchema(xsd); }
@@ -112,17 +111,9 @@ public class Converter {
 
         System.out.println("Converting: \n" + opts.xsdFile + " -> " + opts.avscFile + "\n" + opts.xmlFile + " -> " + opts.avroFile);
 
-        Element el;
-        try (InputStream stream = new FileInputStream(opts.xmlFile)) {
-            el = DatumBuilder.parse(new InputSource(stream));
-        }
-
         SchemaBuilder schemaBuilder = new SchemaBuilder();
         schemaBuilder.setDebug(opts.debug);
         schemaBuilder.setBaseDir(opts.baseDir);
-
-        schemaBuilder.setRootElementName(el.getLocalName());
-        schemaBuilder.setRootElementNs(el.getNamespaceURI());
         Schema schema = schemaBuilder.createSchema(opts.xsdFile);
 
         try (Writer writer = new FileWriter(opts.avscFile)) {
@@ -130,7 +121,7 @@ public class Converter {
         }
 
         DatumBuilder datumBuilder = new DatumBuilder(schema);
-        Object datum = datumBuilder.createDatum(el);
+        Object datum = datumBuilder.createDatum(opts.xmlFile);
 
         try (OutputStream stream = new FileOutputStream(opts.avroFile)) {
             DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);

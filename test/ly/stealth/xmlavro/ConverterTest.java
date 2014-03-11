@@ -60,6 +60,48 @@ public class ConverterTest {
     }
 
     @Test
+    public void severalRoots() {
+        String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "   <xs:element name='i' type='xs:int'/>" +
+                "   <xs:element name='r'>" +
+                "     <xs:complexType>" +
+                "       <xs:sequence>" +
+                "         <xs:element name='s' type='xs:string'/>" +
+                "       </xs:sequence>" +
+                "     </xs:complexType>" +
+                "   </xs:element>" +
+                "</xs:schema>";
+
+        Schema schema = Converter.createSchema(xsd);
+        assertEquals(Schema.Type.RECORD, schema.getType());
+        assertEquals(Source.DOCUMENT, schema.getProp(Source.SOURCE));
+        assertEquals(2, schema.getFields().size());
+
+        Schema.Field field0 = schema.getFields().get(0);
+        assertEquals("" + new Source("i"), field0.getProp(Source.SOURCE));
+        assertEquals(Schema.Type.UNION, field0.schema().getType());
+        assertEquals(Schema.Type.INT, field0.schema().getTypes().get(0).getType());
+        assertEquals(Schema.Type.NULL, field0.schema().getTypes().get(1).getType());
+
+        Schema.Field field1 = schema.getFields().get(1);
+        assertEquals("" + new Source("r"), field1.getProp(Source.SOURCE));
+        assertEquals(Schema.Type.UNION, field1.schema().getType());
+        assertEquals(Schema.Type.RECORD, field1.schema().getTypes().get(0).getType());
+        assertEquals(Schema.Type.NULL, field1.schema().getTypes().get(1).getType());
+
+        String xml = "<i>5</i>";
+        GenericData.Record record = Converter.createDatum(schema, xml);
+        assertEquals(null, record.get("r"));
+        assertEquals(5, record.get("i"));
+
+        xml = "<r><s>s</s></r>";
+        record = Converter.createDatum(schema, xml);
+        GenericData.Record subRecord = (GenericData.Record) record.get("r");
+        assertEquals("s", subRecord.get("s"));
+    }
+
+    @Test
     public void rootRecord() {
         String xsd =
                 "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +

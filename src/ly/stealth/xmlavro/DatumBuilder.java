@@ -87,20 +87,22 @@ public class DatumBuilder {
         if (PRIMITIVES.contains(schema.getType()))
             return createValue(schema.getType(), source.getTextContent());
 
-        if (schema.getType() == Schema.Type.UNION) {
-            // Unions could exist only in form of [type, null],
-            // which means optional value
-            List<Schema> unionTypes = schema.getTypes();
-            if (unionTypes.size() != 2 || unionTypes.get(1).getType() != Schema.Type.NULL)
-                throw new IllegalStateException("Unsupported union type " + schema);
-
-            return createNodeDatum(unionTypes.get(0), source);
-        }
+        if (schema.getType() == Schema.Type.UNION)
+            return createUnionDatum(schema, source);
 
         if (schema.getType() == Schema.Type.RECORD)
-            return createRecord(schema, (Element)source);
+            return createRecord(schema, (Element) source);
 
         throw new IllegalStateException("Unsupported schema type " + schema.getType());
+    }
+
+    private Object createUnionDatum(Schema union, Node source) {
+        List<Schema> types = union.getTypes();
+
+        boolean optionalNode = types.size() == 2 && types.get(1).getType() == Schema.Type.NULL;
+        if (!optionalNode) throw new IllegalStateException("Unsupported union tyeps " + types);
+
+        return createNodeDatum(types.get(0), source);
     }
 
     private Object createValue(Schema.Type type, String text) {
@@ -137,7 +139,9 @@ public class DatumBuilder {
                 record.put(field.name(), new HashMap<String, Object>());
         }
 
-        NodeList nodes = el.getChildNodes();
+        boolean rootRecord = Source.DOCUMENT.equals(schema.getProp(Source.SOURCE));
+        NodeList nodes = rootRecord ? el.getOwnerDocument().getChildNodes() : el.getChildNodes();
+
         for (int i = 0; i < nodes.getLength(); i++) {
             Node node = nodes.item(i);
             if (node.getNodeType() != Node.ELEMENT_NODE) continue;
@@ -167,20 +171,22 @@ public class DatumBuilder {
             }
         }
 
-        NamedNodeMap attrMap = el.getAttributes();
-        for (int i = 0; i < attrMap.getLength(); i++) {
-            Attr attr = (Attr) attrMap.item(i);
+        if (!rootRecord) {
+            NamedNodeMap attrMap = el.getAttributes();
+            for (int i = 0; i < attrMap.getLength(); i++) {
+                Attr attr = (Attr) attrMap.item(i);
 
-            List<String> ignoredNamespaces = Arrays.asList("http://www.w3.org/2000/xmlns/", "http://www.w3.org/2001/XMLSchema-instance");
-            if (ignoredNamespaces.contains(attr.getNamespaceURI())) continue;
+                List<String> ignoredNamespaces = Arrays.asList("http://www.w3.org/2000/xmlns/", "http://www.w3.org/2001/XMLSchema-instance");
+                if (ignoredNamespaces.contains(attr.getNamespaceURI())) continue;
 
-            Schema.Field field = getFieldBySource(schema, new Source(attr.getName(), true));
+                Schema.Field field = getFieldBySource(schema, new Source(attr.getName(), true));
 
-            if (field == null)
-                throw new IllegalStateException("Unsupported attribute " + attr.getName());
+                if (field == null)
+                    throw new IllegalStateException("Unsupported attribute " + attr.getName());
 
-            Object datum = createNodeDatum(field.schema(), attr);
-            record.put(field.name(), datum);
+                Object datum = createNodeDatum(field.schema(), attr);
+                record.put(field.name(), datum);
+            }
         }
 
         return record;
@@ -190,6 +196,14 @@ public class DatumBuilder {
         for (Schema.Field field : schema.getFields())
             if (source.toString().equals(field.getProp(Source.SOURCE)))
                 return field;
+
+        return null;
+    }
+
+    static Schema getUnionSubSchemaBySource(Schema union, Source source) {
+        for (Schema schema : union.getTypes())
+            if (source.toString().equals(schema.getProp(Source.SOURCE)))
+                return schema;
 
         return null;
     }
