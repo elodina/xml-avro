@@ -38,7 +38,7 @@ public class ConverterTest {
         try { // no namespace
             Converter.createSchema("<schema/>");
             fail();
-        } catch (XMLParseException e) {
+        } catch (ConverterException e) {
             String message = e.getMessage();
             assertTrue(message, message.contains("http://www.w3.org/2001/XMLSchema"));
             assertTrue(message, message.contains("namespace"));
