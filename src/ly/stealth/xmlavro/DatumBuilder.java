@@ -19,7 +19,7 @@ import java.io.*;
 import java.util.*;
 
 public class DatumBuilder {
-    public static Element parse(InputSource source) {
+    private static Element parse(InputSource source) {
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
             builderFactory.setNamespaceAware(true);
@@ -28,7 +28,7 @@ public class DatumBuilder {
             Document doc = builder.parse(source);
             return doc.getDocumentElement();
         } catch (ParserConfigurationException | SAXException | IOException e) {
-            throw new RuntimeException(e);
+            throw new ConverterException(e);
         }
     }
 
@@ -56,7 +56,7 @@ public class DatumBuilder {
         try (InputStream stream = new FileInputStream(file)) {
             return createDatum(stream);
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            throw new ConverterException(e);
         }
     }
 
@@ -93,14 +93,14 @@ public class DatumBuilder {
         if (schema.getType() == Schema.Type.RECORD)
             return createRecord(schema, (Element) source);
 
-        throw new IllegalStateException("Unsupported schema type " + schema.getType());
+        throw new ConverterException("Unsupported schema type " + schema.getType());
     }
 
     private Object createUnionDatum(Schema union, Node source) {
         List<Schema> types = union.getTypes();
 
         boolean optionalNode = types.size() == 2 && types.get(1).getType() == Schema.Type.NULL;
-        if (!optionalNode) throw new IllegalStateException("Unsupported union tyeps " + types);
+        if (!optionalNode) throw new ConverterException("Unsupported union types " + types);
 
         return createNodeDatum(types.get(0), source);
     }
@@ -124,7 +124,7 @@ public class DatumBuilder {
         if (type == Schema.Type.STRING)
             return text;
 
-        throw new UnsupportedOperationException("Unsupported type " + type);
+        throw new ConverterException("Unsupported type " + type);
     }
 
     private GenericData.Record createRecord(Schema schema, Element el) {
@@ -163,7 +163,7 @@ public class DatumBuilder {
             } else {
                 Schema.Field anyField = schema.getField(Source.WILDCARD);
                 if (anyField == null)
-                    throw new IllegalStateException("Type doesn't support any element");
+                    throw new ConverterException("Type doesn't support any element");
 
                 @SuppressWarnings("unchecked")
                 Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
@@ -182,7 +182,7 @@ public class DatumBuilder {
                 Schema.Field field = getFieldBySource(schema, new Source(attr.getName(), true));
 
                 if (field == null)
-                    throw new IllegalStateException("Unsupported attribute " + attr.getName());
+                    throw new ConverterException("Unsupported attribute " + attr.getName());
 
                 Object datum = createNodeDatum(field.schema(), attr);
                 record.put(field.name(), datum);
@@ -218,7 +218,7 @@ public class DatumBuilder {
             transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
             transformer.transform(new DOMSource(el), new StreamResult(writer));
         } catch (TransformerException impossible) {
-            throw new RuntimeException(impossible);
+            throw new ConverterException(impossible);
         }
 
         String result = "" + writer.getBuffer();

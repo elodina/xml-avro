@@ -27,7 +27,7 @@ import java.util.List;
 
 public class Converter {
     public static Schema createSchema(String xsd) { return new SchemaBuilder().createSchema(xsd); }
-    public static Schema createSchema(File file) throws IOException { return new SchemaBuilder().createSchema(file); }
+    public static Schema createSchema(File file) { return new SchemaBuilder().createSchema(file); }
     public static Schema createSchema(Reader reader) { return new SchemaBuilder().createSchema(reader); }
     public static Schema createSchema(InputStream stream) { return new SchemaBuilder().createSchema(stream); }
 

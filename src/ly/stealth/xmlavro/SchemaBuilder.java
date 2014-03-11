@@ -34,9 +34,11 @@ public class SchemaBuilder {
         return createSchema(new StringReader(xsd));
     }
 
-    public Schema createSchema(File file) throws IOException {
+    public Schema createSchema(File file) throws ConverterException {
         try (InputStream stream = new FileInputStream(file)) {
             return createSchema(stream);
+        } catch (IOException e) {
+            throw new ConverterException(e);
         }
     }
 
@@ -63,7 +65,7 @@ public class SchemaBuilder {
         XSModel model = loader.load(input);
 
         if (errorHandler.exception != null)
-            throw errorHandler.exception;
+            throw new ConverterException(errorHandler.exception);
 
         return createSchema(model);
     }
@@ -83,7 +85,7 @@ public class SchemaBuilder {
             schemas.put(new Source(el.getName()), schema);
         }
 
-        if (schemas.size() == 0) throw new IllegalStateException("No root element declaration");
+        if (schemas.size() == 0) throw new ConverterException("No root element declaration");
         if (schemas.size() == 1) return schemas.values().iterator().next();
 
         return createRootRecordSchema(schemas);
@@ -159,7 +161,7 @@ public class SchemaBuilder {
 
         XSTerm term = particle.getTerm();
         if (term.getType() != XSConstants.MODEL_GROUP)
-            throw new UnsupportedOperationException("Unsupported term type " + term.getType());
+            throw new ConverterException("Unsupported term type " + term.getType());
 
         XSModelGroup group = (XSModelGroup) term;
         createGroupFields(group, fields, false);
@@ -194,7 +196,7 @@ public class SchemaBuilder {
                     fields.put(field.getProp(Source.SOURCE), field);
                     break;
                 default:
-                    throw new UnsupportedOperationException("Unsupported term type " + term.getType());
+                    throw new ConverterException("Unsupported term type " + term.getType());
             }
         }
     }
@@ -202,7 +204,7 @@ public class SchemaBuilder {
     private Schema.Field createField(Iterable<Schema.Field> fields, XSObject source, XSTypeDefinition type, boolean optional, boolean array) {
         List<Short> supportedTypes = Arrays.asList(XSConstants.ELEMENT_DECLARATION, XSConstants.ATTRIBUTE_DECLARATION, XSConstants.WILDCARD);
         if (!supportedTypes.contains(source.getType()))
-            throw new IllegalArgumentException("Invalid source object type " + source.getType());
+            throw new ConverterException("Invalid source object type " + source.getType());
 
         boolean wildcard = source.getType() == XSConstants.WILDCARD;
         if (wildcard) {
