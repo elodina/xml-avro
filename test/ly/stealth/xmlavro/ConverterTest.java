@@ -16,12 +16,12 @@
  */
 package ly.stealth.xmlavro;
 
-import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.junit.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import static junit.framework.Assert.*;
 
@@ -37,7 +37,7 @@ public class ConverterTest {
         try { // no namespace
             Converter.createSchema("<schema/>");
             fail();
-        } catch (XMLParseException e) {
+        } catch (ConverterException e) {
             String message = e.getMessage();
             assertTrue(message, message.contains("http://www.w3.org/2001/XMLSchema"));
             assertTrue(message, message.contains("namespace"));
@@ -56,6 +56,48 @@ public class ConverterTest {
 
         String xml = "<i>1</i>";
         assertEquals(1, Converter.createDatum(schema, xml));
+    }
+
+    @Test
+    public void severalRoots() {
+        String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "   <xs:element name='i' type='xs:int'/>" +
+                "   <xs:element name='r'>" +
+                "     <xs:complexType>" +
+                "       <xs:sequence>" +
+                "         <xs:element name='s' type='xs:string'/>" +
+                "       </xs:sequence>" +
+                "     </xs:complexType>" +
+                "   </xs:element>" +
+                "</xs:schema>";
+
+        Schema schema = Converter.createSchema(xsd);
+        assertEquals(Schema.Type.RECORD, schema.getType());
+        assertEquals(Source.DOCUMENT, schema.getProp(Source.SOURCE));
+        assertEquals(2, schema.getFields().size());
+
+        Schema.Field field0 = schema.getFields().get(0);
+        assertEquals("" + new Source("i"), field0.getProp(Source.SOURCE));
+        assertEquals(Schema.Type.UNION, field0.schema().getType());
+        assertEquals(Schema.Type.INT, field0.schema().getTypes().get(0).getType());
+        assertEquals(Schema.Type.NULL, field0.schema().getTypes().get(1).getType());
+
+        Schema.Field field1 = schema.getFields().get(1);
+        assertEquals("" + new Source("r"), field1.getProp(Source.SOURCE));
+        assertEquals(Schema.Type.UNION, field1.schema().getType());
+        assertEquals(Schema.Type.RECORD, field1.schema().getTypes().get(0).getType());
+        assertEquals(Schema.Type.NULL, field1.schema().getTypes().get(1).getType());
+
+        String xml = "<i>5</i>";
+        GenericData.Record record = Converter.createDatum(schema, xml);
+        assertEquals(null, record.get("r"));
+        assertEquals(5, record.get("i"));
+
+        xml = "<r><s>s</s></r>";
+        record = Converter.createDatum(schema, xml);
+        GenericData.Record subRecord = (GenericData.Record) record.get("r");
+        assertEquals("s", subRecord.get("s"));
     }
 
     @Test
@@ -179,10 +221,10 @@ public class ConverterTest {
         assertEquals(2, schema.getFields().size());
         Schema.Field field = schema.getField("field");
         assertNotNull(field);
-        assertEquals("" + new Converter.Source("field", true), field.getProp(Converter.SOURCE));
+        assertEquals("" + new Source("field", true), field.getProp(Source.SOURCE));
 
         Schema.Field field0 = schema.getField("field0");
-        assertEquals("" + new Converter.Source("field", false), field0.getProp(Converter.SOURCE));
+        assertEquals("" + new Source("field", false), field0.getProp(Source.SOURCE));
 
         String xml = "<root field='value'><field>value0</field></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -207,7 +249,7 @@ public class ConverterTest {
         Schema schema = Converter.createSchema(xsd);
         assertEquals(2, schema.getFields().size());
 
-        Schema.Field wildcardField = schema.getField(Converter.WILDCARD);
+        Schema.Field wildcardField = schema.getField(Source.WILDCARD);
         assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
 
         // Two wildcard-matched elements
@@ -222,7 +264,7 @@ public class ConverterTest {
         assertEquals("field", record.get("field"));
 
         @SuppressWarnings("unchecked")
-        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(Converter.WILDCARD);
+        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(Source.WILDCARD);
 
         assertEquals(2, map.size());
         assertEquals("field0", map.get("field0"));
@@ -233,7 +275,7 @@ public class ConverterTest {
         record = Converter.createDatum(schema, xml);
 
         assertEquals("field", record.get("field"));
-        assertNull(record.get(Converter.WILDCARD));
+        assertEquals(Collections.emptyMap(), record.get(Source.WILDCARD));
     }
 
     @Test
@@ -253,8 +295,8 @@ public class ConverterTest {
         Schema schema = Converter.createSchema(xsd);
         assertEquals(1, schema.getFields().size());
 
-        Schema.Field field = schema.getField(Converter.WILDCARD);
-        assertEquals(null, field.getProp(Converter.SOURCE));
+        Schema.Field field = schema.getField(Source.WILDCARD);
+        assertEquals(null, field.getProp(Source.SOURCE));
     }
 
     @Test
@@ -372,7 +414,7 @@ public class ConverterTest {
 
     @Test
     public void SchemaBuilder_validName() {
-        Converter.SchemaBuilder builder = new Converter.SchemaBuilder("<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'/>");
+        SchemaBuilder builder = new SchemaBuilder();
 
         assertNull(builder.validName(null));
         assertEquals("", builder.validName(""));
