@@ -16,7 +16,6 @@
  */
 package ly.stealth.xmlavro;
 
-import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.junit.Test;

@@ -99,6 +99,18 @@ public class Converter {
         }
     }
 
+    private static class BaseDirResolver implements SchemaBuilder.Resolver {
+        private File baseDir;
+        private BaseDirResolver(File baseDir) { this.baseDir = baseDir; }
+
+        public InputStream getStream(String systemId) {
+            File file = new File(baseDir, systemId);
+
+            try { return new FileInputStream(file); }
+            catch (FileNotFoundException e) { return null; }
+        }
+    }
+
     public static void main(String... args) throws IOException {
         Options opts;
         try {
@@ -113,7 +125,7 @@ public class Converter {
 
         SchemaBuilder schemaBuilder = new SchemaBuilder();
         schemaBuilder.setDebug(opts.debug);
-        schemaBuilder.setBaseDir(opts.baseDir);
+        if (opts.baseDir != null) schemaBuilder.setResolver(new BaseDirResolver(opts.baseDir));
         Schema schema = schemaBuilder.createSchema(opts.xsdFile);
 
         try (Writer writer = new FileWriter(opts.avscFile)) {

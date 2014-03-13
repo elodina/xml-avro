@@ -13,21 +13,19 @@ import org.apache.avro.Schema;
 import org.w3c.dom.ls.LSInput;
 
 import java.io.*;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.*;
 
 public class SchemaBuilder {
     private boolean debug;
-    private File baseDir;
+    private Resolver resolver;
 
     private Map<String, Schema> schemas = new LinkedHashMap<>();
 
     public boolean getDebug() { return debug; }
     public void setDebug(boolean debug) { this.debug = debug; }
 
-    public File getBaseDir() { return baseDir; }
-    public void setBaseDir(File baseDir) { this.baseDir = baseDir; }
+    public Resolver getResolver() { return resolver; }
+    public void setResolver(Resolver resolver) { this.resolver = resolver; }
 
 
     public Schema createSchema(String xsd) {
@@ -58,8 +56,8 @@ public class SchemaBuilder {
         ErrorHandler errorHandler = new ErrorHandler();
 
         XMLSchemaLoader loader = new XMLSchemaLoader();
-        if (baseDir != null)
-            loader.setEntityResolver(new EntityResolver(baseDir));
+        if (resolver != null)
+            loader.setEntityResolver(new EntityResolver(resolver));
 
         loader.setErrorHandler(errorHandler);
         XSModel model = loader.load(input);
@@ -320,25 +318,21 @@ public class SchemaBuilder {
     }
 
     private class EntityResolver implements XMLEntityResolver {
-        private File baseDir;
-        private EntityResolver(File baseDir) { this.baseDir = baseDir; }
+        private Resolver resolver;
+        private EntityResolver(Resolver resolver) { this.resolver = resolver; }
 
         @Override
         public XMLInputSource resolveEntity(XMLResourceIdentifier id) throws XNIException, IOException {
             String systemId = id.getLiteralSystemId();
             debug("Resolving " + systemId);
 
-            boolean absolute = true;
-            try { absolute = new URI(systemId).isAbsolute(); }
-            catch (URISyntaxException ignore) {}
-
-            if (absolute) return null;
-
-            File file = new File(baseDir, systemId);
             XMLInputSource source = new XMLInputSource(id);
-            source.setByteStream(new FileInputStream(file));
-
+            source.setByteStream(resolver.getStream(systemId));
             return source;
         }
+    }
+
+    public static interface Resolver {
+        InputStream getStream(String systemId);
     }
 }
