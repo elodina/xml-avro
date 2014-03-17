@@ -19,7 +19,7 @@ import java.io.*;
 import java.util.*;
 
 public class DatumBuilder {
-    private static Element parse(InputSource source) {
+    public static Element parse(InputSource source) {
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
             builderFactory.setNamespaceAware(true);
