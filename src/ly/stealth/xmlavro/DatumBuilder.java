@@ -179,6 +179,9 @@ public class DatumBuilder {
                 List<String> ignoredNamespaces = Arrays.asList("http://www.w3.org/2000/xmlns/", "http://www.w3.org/2001/XMLSchema-instance");
                 if (ignoredNamespaces.contains(attr.getNamespaceURI())) continue;
 
+                List<String> ignoredNames = Arrays.asList("xml:lang");
+                if (ignoredNames.contains(attr.getName())) continue;
+
                 Schema.Field field = getFieldBySource(schema, new Source(attr.getName(), true));
 
                 if (field == null)
