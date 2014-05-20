@@ -79,8 +79,8 @@ public class Converter {
             xsdFile = replaceBaseDir(files.get(0), baseDir);
             xmlFile = replaceBaseDir(files.get(1), baseDir);
 
-            avscFile = files.size() > 2 ? replaceBaseDir(files.get(3), baseDir) : replaceExtension(xsdFile, "avsc");
-            avroFile = files.size() > 3 ? replaceBaseDir(files.get(4), baseDir) : replaceExtension(xmlFile, "avro");
+            avscFile = files.size() > 2 ? replaceBaseDir(files.get(2), baseDir) : replaceExtension(xsdFile, "avsc");
+            avroFile = files.size() > 3 ? replaceBaseDir(files.get(3), baseDir) : replaceExtension(xmlFile, "avro");
         }
 
         private static File replaceExtension(File file, String newExtension) {
