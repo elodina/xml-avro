@@ -41,10 +41,14 @@ public class DatumBuilder {
     }
 
     private Schema schema;
+    private boolean caseSensitiveNames = true;
 
     public DatumBuilder(Schema schema) {
         this.schema = schema;
     }
+
+    public boolean isCaseSensitiveNames() { return caseSensitiveNames; }
+    public void setCaseSensitiveNames(boolean caseSensitiveNames) { this.caseSensitiveNames = caseSensitiveNames; }
 
     @SuppressWarnings("unchecked")
     public <T> T createDatum(String xml) {
@@ -195,18 +199,12 @@ public class DatumBuilder {
         return record;
     }
 
-    static Schema.Field getFieldBySource(Schema schema, Source source) {
-        for (Schema.Field field : schema.getFields())
-            if (source.toString().equals(field.getProp(Source.SOURCE)))
-                return field;
-
-        return null;
-    }
-
-    static Schema getUnionSubSchemaBySource(Schema union, Source source) {
-        for (Schema schema : union.getTypes())
-            if (source.toString().equals(schema.getProp(Source.SOURCE)))
-                return schema;
+    Schema.Field getFieldBySource(Schema schema, Source source) {
+        for (Schema.Field field : schema.getFields()) {
+            String fieldSource = field.getProp(Source.SOURCE);
+            if (caseSensitiveNames && source.toString().equals(fieldSource)) return field;
+            if (!caseSensitiveNames && source.toString().equalsIgnoreCase(fieldSource)) return field;
+        }
 
         return null;
     }

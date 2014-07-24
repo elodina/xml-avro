@@ -1,6 +1,7 @@
 package ly.stealth.xmlavro;
 
 import com.sun.org.apache.xerces.internal.dom.DOMInputImpl;
+import com.sun.org.apache.xerces.internal.impl.Constants;
 import com.sun.org.apache.xerces.internal.impl.xs.XMLSchemaLoader;
 import com.sun.org.apache.xerces.internal.xni.XMLResourceIdentifier;
 import com.sun.org.apache.xerces.internal.xni.XNIException;
@@ -10,6 +11,9 @@ import com.sun.org.apache.xerces.internal.xni.parser.XMLInputSource;
 import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
 import com.sun.org.apache.xerces.internal.xs.*;
 import org.apache.avro.Schema;
+import org.w3c.dom.DOMError;
+import org.w3c.dom.DOMErrorHandler;
+import org.w3c.dom.DOMLocator;
 import org.w3c.dom.ls.LSInput;
 
 import java.io.*;
@@ -60,13 +64,30 @@ public class SchemaBuilder {
             loader.setEntityResolver(new EntityResolver(resolver));
 
         loader.setErrorHandler(errorHandler);
+        loader.setParameter(Constants.DOM_ERROR_HANDLER, errorHandler);
+        fixJdk802937(loader);
+
         XSModel model = loader.load(input);
 
-        if (errorHandler.exception != null)
-            throw new ConverterException(errorHandler.exception);
-
+        errorHandler.throwExceptionIfHasError();
         return createSchema(model);
     }
+
+    private static void fixJdk802937(XMLSchemaLoader loader) {
+        // Starting from JDK 1.7_u40 schema parsing doen't work without this:
+        // https://bugs.openjdk.java.net/browse/JDK-8029837
+        try {
+            Class<?> clazz = Class.forName("com.sun.org.apache.xerces.internal.utils.XMLSecurityPropertyManager");
+            loader.setParameter("http://www.oracle.com/xml/jaxp/properties/xmlSecurityPropertyManager", clazz.newInstance());
+
+            clazz = Class.forName("com.sun.org.apache.xerces.internal.utils.XMLSecurityManager");
+            loader.setParameter(Constants.XERCES_PROPERTY_PREFIX + "security-manager", clazz.newInstance());
+        } catch (ClassNotFoundException ignore) {
+        } catch (InstantiationException | IllegalAccessException e) {
+            throw new ConverterException(e);
+        }
+    }
+
 
     public Schema createSchema(XSModel model) {
         schemas.clear();
@@ -260,9 +281,9 @@ public class SchemaBuilder {
         for (char c : chars) {
             boolean valid =
                     c >= 'a' && c <= 'z' ||
-                    c >= 'A' && c <= 'z' ||
-                    c >= '0' && c <= '9' ||
-                    c == '_';
+                            c >= 'A' && c <= 'z' ||
+                            c >= '0' && c <= '9' ||
+                            c == '_';
 
             boolean separator = c == '.' || c == '-';
 
@@ -298,8 +319,9 @@ public class SchemaBuilder {
         if (debug) System.out.println(new String(prefix) + s);
     }
 
-    private static class ErrorHandler implements XMLErrorHandler {
+    private static class ErrorHandler implements XMLErrorHandler, DOMErrorHandler {
         XMLParseException exception;
+        DOMError error;
 
         @Override
         public void warning(String domain, String key, XMLParseException exception) throws XNIException {
@@ -314,6 +336,26 @@ public class SchemaBuilder {
         @Override
         public void fatalError(String domain, String key, XMLParseException exception) throws XNIException {
             if (this.exception == null) this.exception = exception;
+        }
+
+        @Override
+        public boolean handleError(DOMError error) {
+            if (this.error == null) this.error = error;
+            return false;
+        }
+
+        void throwExceptionIfHasError() {
+            if (exception != null)
+                throw new ConverterException(exception);
+
+            if (error != null) {
+                if (error.getRelatedException() instanceof Throwable)
+                    throw new ConverterException((Throwable) error.getRelatedException());
+
+                DOMLocator locator = error.getLocation();
+                String location = "at:" + locator.getUri() + ", line:" + locator.getLineNumber() + ", char:" + locator.getColumnNumber();
+                throw new ConverterException(location + " " + error.getMessage());
+            }
         }
     }
 
