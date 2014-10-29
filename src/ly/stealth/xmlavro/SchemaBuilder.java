@@ -23,6 +23,28 @@ public class SchemaBuilder {
     private boolean debug;
     private Resolver resolver;
 
+    private static Map<Short, Schema.Type> xmlToAvroTypes = new HashMap<>();
+
+    private static void setAvroForXml(Schema.Type avroType, short... xmlTypes) {
+      for (short xmlType : xmlTypes) {
+        xmlToAvroTypes.put(xmlType, avroType);
+      }
+    }
+
+    private static Schema.Type getAvroFor(short xmlType) {
+      Schema.Type avroType = xmlToAvroTypes.get(xmlType);
+      return avroType == null ? Schema.Type.STRING : avroType;
+    }
+
+    static {
+      setAvroForXml(Schema.Type.BOOLEAN, XSConstants.BOOLEAN_DT);
+      setAvroForXml(Schema.Type.INT, XSConstants.INT_DT, XSConstants.BYTE_DT, XSConstants.SHORT_DT,
+              XSConstants.UNSIGNEDBYTE_DT, XSConstants.UNSIGNEDSHORT_DT);
+      setAvroForXml(Schema.Type.LONG, XSConstants.LONG_DT, XSConstants.UNSIGNEDINT_DT);
+      setAvroForXml(Schema.Type.FLOAT, XSConstants.FLOAT_DT);
+      setAvroForXml(Schema.Type.DOUBLE, XSConstants.DOUBLE_DT, XSConstants.DECIMAL_DT);
+    }
+
     private Map<String, Schema> schemas = new LinkedHashMap<>();
 
     public boolean getDebug() { return debug; }
@@ -245,14 +267,7 @@ public class SchemaBuilder {
     }
 
     private Schema.Type getPrimitiveType(XSSimpleTypeDefinition type) {
-        switch (type.getBuiltInKind()) {
-            case XSConstants.BOOLEAN_DT: return Schema.Type.BOOLEAN;
-            case XSConstants.INT_DT: return Schema.Type.INT;
-            case XSConstants.LONG_DT: return Schema.Type.LONG;
-            case XSConstants.FLOAT_DT: return Schema.Type.FLOAT;
-            case XSConstants.DOUBLE_DT: return Schema.Type.DOUBLE;
-            default: return Schema.Type.STRING;
-        }
+      return getAvroFor(type.getBuiltInKind());
     }
 
     static String uniqueFieldName(Iterable<Schema.Field> fields, String name) {
