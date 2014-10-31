@@ -45,17 +45,44 @@ public class ConverterTest {
     }
 
     @Test
-    public void rootPrimitive() {
+    public void rootIntPrimitive() {
+        rootPrimitiveWithType("xs:int", "-1", Schema.Type.INT, -1);
+        rootPrimitiveWithType("xs:integer", "-5", Schema.Type.INT, -5);
+        rootPrimitiveWithType("xs:unsignedByte", "1", Schema.Type.INT, 1);
+        rootPrimitiveWithType("xs:unsignedShort", "5", Schema.Type.INT, 5);
+        rootPrimitiveWithType("xs:negativeInteger", "-10", Schema.Type.INT, -10);
+        rootPrimitiveWithType("xs:nonPositiveInteger", "0", Schema.Type.INT, 0);
+        rootPrimitiveWithType("xs:nonNegativeInteger", "0", Schema.Type.INT, 0);
+        rootPrimitiveWithType("xs:positiveInteger", "10", Schema.Type.INT, 10);
+    }
+
+    @Test
+    public void rootLongPrimitive() {
+        rootPrimitiveWithType("xs:long", "20", Schema.Type.LONG, new Long(20));
+        rootPrimitiveWithType("xs:unsignedInt", "30", Schema.Type.LONG, new Long(30));
+    }
+
+    @Test
+    public void rootDoublePrimitive() {
+        rootPrimitiveWithType("xs:decimal", "999999999.999999999", Schema.Type.DOUBLE, new Double(999999999.999999999));
+    }
+
+    @Test
+    public void rootUnsignedLongShouldBeKeptAsAvroString() {
+        rootPrimitiveWithType("xs:unsignedLong", "18446744073709551615", Schema.Type.STRING, "18446744073709551615");
+    }
+
+    public <T> void rootPrimitiveWithType(String xsdType, String xmlValue, Schema.Type avroType, T avroValue) {
         String xsd =
                 "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "   <xs:element name='i' type='xs:int'/>" +
+                "   <xs:element name='value' type='" + xsdType + "'/>" +
                 "</xs:schema>";
 
         Schema schema = Converter.createSchema(xsd);
-        assertEquals(Schema.Type.INT, schema.getType());
+        assertEquals(avroType, schema.getType());
 
-        String xml = "<i>1</i>";
-        assertEquals(1, Converter.createDatum(schema, xml));
+        String xml = "<value>" + xmlValue + "</value>";
+        assertEquals(avroValue, Converter.createDatum(schema, xml));
     }
 
     @Test
