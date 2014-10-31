@@ -28,15 +28,16 @@ public class SchemaBuilder {
         primitives.put(XSConstants.BOOLEAN_DT, Schema.Type.BOOLEAN);
 
         primitives.put(XSConstants.INT_DT, Schema.Type.INT);
-        primitives.put(XSConstants.INTEGER_DT, Schema.Type.INT);
-        primitives.put(XSConstants.NEGATIVEINTEGER_DT, Schema.Type.INT);
-        primitives.put(XSConstants.NONNEGATIVEINTEGER_DT, Schema.Type.INT);
-        primitives.put(XSConstants.POSITIVEINTEGER_DT, Schema.Type.INT);
-        primitives.put(XSConstants.NONPOSITIVEINTEGER_DT, Schema.Type.INT);
         primitives.put(XSConstants.BYTE_DT, Schema.Type.INT);
         primitives.put(XSConstants.SHORT_DT, Schema.Type.INT);
         primitives.put(XSConstants.UNSIGNEDBYTE_DT, Schema.Type.INT);
         primitives.put(XSConstants.UNSIGNEDSHORT_DT, Schema.Type.INT);
+
+        primitives.put(XSConstants.INTEGER_DT, Schema.Type.STRING);
+        primitives.put(XSConstants.NEGATIVEINTEGER_DT, Schema.Type.STRING);
+        primitives.put(XSConstants.NONNEGATIVEINTEGER_DT, Schema.Type.STRING);
+        primitives.put(XSConstants.POSITIVEINTEGER_DT, Schema.Type.STRING);
+        primitives.put(XSConstants.NONPOSITIVEINTEGER_DT, Schema.Type.STRING);
 
         primitives.put(XSConstants.LONG_DT, Schema.Type.LONG);
         primitives.put(XSConstants.UNSIGNEDINT_DT, Schema.Type.LONG);
