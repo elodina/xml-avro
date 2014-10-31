@@ -45,6 +45,8 @@ public class SchemaBuilder {
 
         primitives.put(XSConstants.DOUBLE_DT, Schema.Type.DOUBLE);
         primitives.put(XSConstants.DECIMAL_DT, Schema.Type.DOUBLE);
+
+        primitives.put(XSConstants.DATETIME_DT, Schema.Type.LONG);
     }
 
     private Map<String, Schema> schemas = new LinkedHashMap<>();
