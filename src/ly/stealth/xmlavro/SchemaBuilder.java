@@ -1,16 +1,16 @@
 package ly.stealth.xmlavro;
 
-import com.sun.org.apache.xerces.internal.dom.DOMInputImpl;
-import com.sun.org.apache.xerces.internal.impl.Constants;
-import com.sun.org.apache.xerces.internal.impl.xs.XMLSchemaLoader;
-import com.sun.org.apache.xerces.internal.xni.XMLResourceIdentifier;
-import com.sun.org.apache.xerces.internal.xni.XNIException;
-import com.sun.org.apache.xerces.internal.xni.parser.XMLEntityResolver;
-import com.sun.org.apache.xerces.internal.xni.parser.XMLErrorHandler;
-import com.sun.org.apache.xerces.internal.xni.parser.XMLInputSource;
-import com.sun.org.apache.xerces.internal.xni.parser.XMLParseException;
-import com.sun.org.apache.xerces.internal.xs.*;
 import org.apache.avro.Schema;
+import org.apache.xerces.dom.DOMInputImpl;
+import org.apache.xerces.impl.Constants;
+import org.apache.xerces.impl.xs.XMLSchemaLoader;
+import org.apache.xerces.xni.XMLResourceIdentifier;
+import org.apache.xerces.xni.XNIException;
+import org.apache.xerces.xni.parser.XMLEntityResolver;
+import org.apache.xerces.xni.parser.XMLErrorHandler;
+import org.apache.xerces.xni.parser.XMLInputSource;
+import org.apache.xerces.xni.parser.XMLParseException;
+import org.apache.xerces.xs.*;
 import org.w3c.dom.DOMError;
 import org.w3c.dom.DOMErrorHandler;
 import org.w3c.dom.DOMLocator;
@@ -65,29 +65,12 @@ public class SchemaBuilder {
 
         loader.setErrorHandler(errorHandler);
         loader.setParameter(Constants.DOM_ERROR_HANDLER, errorHandler);
-        fixJdk802937(loader);
 
         XSModel model = loader.load(input);
 
         errorHandler.throwExceptionIfHasError();
         return createSchema(model);
     }
-
-    private static void fixJdk802937(XMLSchemaLoader loader) {
-        // Starting from JDK 1.7_u40 schema parsing doen't work without this:
-        // https://bugs.openjdk.java.net/browse/JDK-8029837
-        try {
-            Class<?> clazz = Class.forName("com.sun.org.apache.xerces.internal.utils.XMLSecurityPropertyManager");
-            loader.setParameter("http://www.oracle.com/xml/jaxp/properties/xmlSecurityPropertyManager", clazz.newInstance());
-
-            clazz = Class.forName("com.sun.org.apache.xerces.internal.utils.XMLSecurityManager");
-            loader.setParameter(Constants.XERCES_PROPERTY_PREFIX + "security-manager", clazz.newInstance());
-        } catch (ClassNotFoundException ignore) {
-        } catch (InstantiationException | IllegalAccessException e) {
-            throw new ConverterException(e);
-        }
-    }
-
 
     public Schema createSchema(XSModel model) {
         schemas.clear();
