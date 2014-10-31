@@ -23,26 +23,28 @@ public class SchemaBuilder {
     private boolean debug;
     private Resolver resolver;
 
-    private static Map<Short, Schema.Type> xmlToAvroTypes = new HashMap<>();
-
-    private static void setAvroForXml(Schema.Type avroType, short... xmlTypes) {
-      for (short xmlType : xmlTypes) {
-        xmlToAvroTypes.put(xmlType, avroType);
-      }
-    }
-
-    private static Schema.Type getAvroFor(short xmlType) {
-      Schema.Type avroType = xmlToAvroTypes.get(xmlType);
-      return avroType == null ? Schema.Type.STRING : avroType;
-    }
-
+    private static Map<Short, Schema.Type> primitives = new HashMap<>();
     static {
-      setAvroForXml(Schema.Type.BOOLEAN, XSConstants.BOOLEAN_DT);
-      setAvroForXml(Schema.Type.INT, XSConstants.INT_DT, XSConstants.BYTE_DT, XSConstants.SHORT_DT,
-              XSConstants.UNSIGNEDBYTE_DT, XSConstants.UNSIGNEDSHORT_DT);
-      setAvroForXml(Schema.Type.LONG, XSConstants.LONG_DT, XSConstants.UNSIGNEDINT_DT);
-      setAvroForXml(Schema.Type.FLOAT, XSConstants.FLOAT_DT);
-      setAvroForXml(Schema.Type.DOUBLE, XSConstants.DOUBLE_DT, XSConstants.DECIMAL_DT);
+        primitives.put(XSConstants.BOOLEAN_DT, Schema.Type.BOOLEAN);
+
+        primitives.put(XSConstants.INT_DT, Schema.Type.INT);
+        primitives.put(XSConstants.INTEGER_DT, Schema.Type.INT);
+        primitives.put(XSConstants.NEGATIVEINTEGER_DT, Schema.Type.INT);
+        primitives.put(XSConstants.NONNEGATIVEINTEGER_DT, Schema.Type.INT);
+        primitives.put(XSConstants.POSITIVEINTEGER_DT, Schema.Type.INT);
+        primitives.put(XSConstants.NONPOSITIVEINTEGER_DT, Schema.Type.INT);
+        primitives.put(XSConstants.BYTE_DT, Schema.Type.INT);
+        primitives.put(XSConstants.SHORT_DT, Schema.Type.INT);
+        primitives.put(XSConstants.UNSIGNEDBYTE_DT, Schema.Type.INT);
+        primitives.put(XSConstants.UNSIGNEDSHORT_DT, Schema.Type.INT);
+
+        primitives.put(XSConstants.LONG_DT, Schema.Type.LONG);
+        primitives.put(XSConstants.UNSIGNEDINT_DT, Schema.Type.LONG);
+
+        primitives.put(XSConstants.FLOAT_DT, Schema.Type.FLOAT);
+
+        primitives.put(XSConstants.DOUBLE_DT, Schema.Type.DOUBLE);
+        primitives.put(XSConstants.DECIMAL_DT, Schema.Type.DOUBLE);
     }
 
     private Map<String, Schema> schemas = new LinkedHashMap<>();
@@ -250,7 +252,8 @@ public class SchemaBuilder {
     }
 
     private Schema.Type getPrimitiveType(XSSimpleTypeDefinition type) {
-      return getAvroFor(type.getBuiltInKind());
+        Schema.Type avroType = primitives.get(type.getBuiltInKind());
+        return avroType == null ? Schema.Type.STRING : avroType;
     }
 
     static String uniqueFieldName(Iterable<Schema.Field> fields, String name) {

@@ -58,13 +58,13 @@ public class ConverterTest {
 
     @Test
     public void rootLongPrimitive() {
-        rootPrimitiveWithType("xs:long", "20", Schema.Type.LONG, new Long(20));
-        rootPrimitiveWithType("xs:unsignedInt", "30", Schema.Type.LONG, new Long(30));
+        rootPrimitiveWithType("xs:long", "20", Schema.Type.LONG, (long) 20);
+        rootPrimitiveWithType("xs:unsignedInt", "30", Schema.Type.LONG, (long) 30);
     }
 
     @Test
     public void rootDoublePrimitive() {
-        rootPrimitiveWithType("xs:decimal", "999999999.999999999", Schema.Type.DOUBLE, new Double(999999999.999999999));
+        rootPrimitiveWithType("xs:decimal", "999999999.999999999", Schema.Type.DOUBLE, 999999999.999999999);
     }
 
     @Test
@@ -72,10 +72,10 @@ public class ConverterTest {
         rootPrimitiveWithType("xs:unsignedLong", "18446744073709551615", Schema.Type.STRING, "18446744073709551615");
     }
 
-    public <T> void rootPrimitiveWithType(String xsdType, String xmlValue, Schema.Type avroType, T avroValue) {
+    public <T> void rootPrimitiveWithType(String xmlType, String xmlValue, Schema.Type avroType, T avroValue) {
         String xsd =
                 "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "   <xs:element name='value' type='" + xsdType + "'/>" +
+                "   <xs:element name='value' type='" + xmlType + "'/>" +
                 "</xs:schema>";
 
         Schema schema = Converter.createSchema(xsd);
