@@ -119,10 +119,10 @@ public class DatumBuilder {
   private Object createUnionDatum(Schema union, Node source) {
         List<Schema> types = union.getTypes();
 
-        boolean optionalNode = types.size() == 2 && types.get(1).getType() == Schema.Type.NULL;
+        boolean optionalNode = types.size() == 2 && types.get(0).getType() == Schema.Type.NULL;
         if (!optionalNode) throw new ConverterException("Unsupported union types " + types);
 
-        return createNodeDatum(types.get(0), source, false);
+        return createNodeDatum(types.get(1), source, false);
     }
 
     private Object createValue(Schema.Type type, String text) {
