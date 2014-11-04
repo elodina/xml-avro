@@ -171,7 +171,7 @@ public class SchemaBuilder {
       if (term.getType() != XSConstants.MODEL_GROUP) return false;
 
       XSModelGroup group = (XSModelGroup) term;
-      return group.getCompositor() == XSModelGroup.COMPOSITOR_CHOICE && particle.getMaxOccurs() > 1;
+      return group.getCompositor() == XSModelGroup.COMPOSITOR_CHOICE && (particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded());
     }
 
     private Schema createRecordSchema(String name, XSComplexTypeDefinition type) {
