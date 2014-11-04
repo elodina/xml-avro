@@ -107,14 +107,14 @@ public class ConverterTest {
         Schema.Field field0 = schema.getFields().get(0);
         assertEquals("" + new Source("i"), field0.getProp(Source.SOURCE));
         assertEquals(Schema.Type.UNION, field0.schema().getType());
-        assertEquals(Schema.Type.INT, field0.schema().getTypes().get(0).getType());
-        assertEquals(Schema.Type.NULL, field0.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.INT, field0.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.NULL, field0.schema().getTypes().get(0).getType());
 
         Schema.Field field1 = schema.getFields().get(1);
         assertEquals("" + new Source("r"), field1.getProp(Source.SOURCE));
         assertEquals(Schema.Type.UNION, field1.schema().getType());
-        assertEquals(Schema.Type.RECORD, field1.schema().getTypes().get(0).getType());
-        assertEquals(Schema.Type.NULL, field1.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.RECORD, field1.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.NULL, field1.schema().getTypes().get(0).getType());
 
         String xml = "<i>5</i>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -181,7 +181,7 @@ public class ConverterTest {
 
         Schema.Field field = schema.getField("node");
         Schema subSchema = field.schema();
-        assertSame(schema, subSchema.getTypes().get(0));
+        assertSame(schema, subSchema.getTypes().get(1));
 
         String xml = "<root><node></node></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -215,7 +215,7 @@ public class ConverterTest {
         Schema.Field optional = schema.getField("optional");
         assertEquals(Schema.Type.UNION, optional.schema().getType());
         assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
                 optional.schema().getTypes()
         );
 
@@ -351,7 +351,7 @@ public class ConverterTest {
         assertEquals(Schema.Type.UNION, optionalSchema.getType());
 
         assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
                 optionalSchema.getTypes()
         );
 
@@ -419,13 +419,13 @@ public class ConverterTest {
         Schema.Field sField = schema.getField("s");
         assertEquals(Schema.Type.UNION, sField.schema().getType());
         assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
                 sField.schema().getTypes()
         );
 
         Schema.Field iField = schema.getField("i");
         assertEquals(Schema.Type.UNION, iField.schema().getType());
-        assertEquals(Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL)), iField.schema().getTypes());
+        assertEquals(Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.INT)), iField.schema().getTypes());
 
         String xml = "<root><s>s</s></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
