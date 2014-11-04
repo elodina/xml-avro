@@ -150,7 +150,7 @@ public class SchemaBuilder {
             if (schema == null) schema = createRecordSchema(name, (XSComplexTypeDefinition) type);
         }
 
-        if (array)
+        if (array || isComplexTypeChoiceWithOccurs(type))
             schema = Schema.createArray(schema);
         else if (optional) {
             Schema nullSchema = Schema.create(Schema.Type.NULL);
@@ -159,6 +159,19 @@ public class SchemaBuilder {
 
         typeLevel--;
         return schema;
+    }
+
+    private boolean isComplexTypeChoiceWithOccurs(XSTypeDefinition type) {
+      if(!(type instanceof  XSComplexTypeDefinition)) return false;
+
+      XSParticle particle = ((XSComplexTypeDefinition) type).getParticle();
+      if (particle == null) return false;
+
+      XSTerm term = particle.getTerm();
+      if (term.getType() != XSConstants.MODEL_GROUP) return false;
+
+      XSModelGroup group = (XSModelGroup) term;
+      return group.getCompositor() == XSModelGroup.COMPOSITOR_CHOICE && (particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded());
     }
 
     private Schema createRecordSchema(String name, XSComplexTypeDefinition type) {
