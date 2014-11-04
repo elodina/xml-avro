@@ -130,7 +130,8 @@ public class SchemaBuilder {
             fields.add(field);
         }
 
-        Schema schema = Schema.createRecord(fields);
+        Schema schema = Schema.createRecord(nextTypeName(), "", "", false);
+        schema.setFields(fields);
         schema.addProp(Source.SOURCE, Source.DOCUMENT);
         return schema;
     }
