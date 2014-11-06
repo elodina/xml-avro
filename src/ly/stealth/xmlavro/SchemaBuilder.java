@@ -136,6 +136,7 @@ public class SchemaBuilder {
     }
 
     private int typeLevel;
+
     private Schema createTypeSchema(XSTypeDefinition type, boolean optional, boolean array) {
         typeLevel++;
         Schema schema;
@@ -150,7 +151,7 @@ public class SchemaBuilder {
             if (schema == null) schema = createRecordSchema(name, (XSComplexTypeDefinition) type);
         }
 
-        if (array || isComplexTypeChoiceWithOccurs(type))
+        if (array || isGroupTypeWithMultipleOccurs(type))
             schema = Schema.createArray(schema);
         else if (optional) {
             Schema nullSchema = Schema.create(Schema.Type.NULL);
@@ -161,17 +162,50 @@ public class SchemaBuilder {
         return schema;
     }
 
-    private boolean isComplexTypeChoiceWithOccurs(XSTypeDefinition type) {
-      if(!(type instanceof  XSComplexTypeDefinition)) return false;
+    private boolean isGroupTypeWithMultipleOccurs(XSTypeDefinition type) {
+      return type instanceof XSComplexTypeDefinition &&
+              isGroupTypeWithMultipleOccurs(((XSComplexTypeDefinition) type).getParticle());
+    }
 
-      XSParticle particle = ((XSComplexTypeDefinition) type).getParticle();
+    private boolean isGroupTypeWithMultipleOccurs(XSParticle particle) {
       if (particle == null) return false;
 
       XSTerm term = particle.getTerm();
       if (term.getType() != XSConstants.MODEL_GROUP) return false;
 
       XSModelGroup group = (XSModelGroup) term;
-      return group.getCompositor() == XSModelGroup.COMPOSITOR_CHOICE && (particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded());
+      final short compositor = group.getCompositor();
+      switch(compositor) {
+        case XSModelGroup.COMPOSITOR_CHOICE:
+        case XSModelGroup.COMPOSITOR_SEQUENCE:
+          return particle.getMaxOccurs() > 1 || particle.getMaxOccursUnbounded();
+        default:
+          return false;
+      }
+    }
+
+    private Schema createGroupSchema(String name, XSModelGroup groupTerm) {
+      Schema record = Schema.createRecord(name, null, null, false);
+      schemas.put(name, record);
+
+      Map<String,Schema.Field> fields = new HashMap<>();
+      createGroupFields(groupTerm, fields, false);
+      record.setFields(new ArrayList(fields.values()));
+
+      return Schema.createArray(record);
+    }
+
+    private List<XSParticle> getNestedGroupParticlesHavingMultipleOccurs(XSComplexTypeDefinition type) {
+        XSModelGroup groupTerm = (XSModelGroup) type.getParticle().getTerm();
+        XSObjectList particles = groupTerm.getParticles();
+        List<XSParticle> groupParticles = new ArrayList<>();
+        for (int i = 0; i < particles.getLength(); i++) {
+            XSParticle particle = (XSParticle) particles.item(i);
+            if(isGroupTypeWithMultipleOccurs(particle)) {
+              groupParticles.add(particle);
+            }
+        }
+        return groupParticles;
     }
 
     private Schema createRecordSchema(String name, XSComplexTypeDefinition type) {
@@ -227,8 +261,13 @@ public class SchemaBuilder {
                     fields.put(field.getProp(Source.SOURCE), field);
                     break;
                 case XSConstants.MODEL_GROUP:
-                    XSModelGroup subGroup = (XSModelGroup) term;
-                    createGroupFields(subGroup, fields, forceOptional || insideChoice);
+                  XSModelGroup subGroup = (XSModelGroup) term;
+                  if(particle.getMaxOccurs() <=1 && !particle.getMaxOccursUnbounded()) {
+                        createGroupFields(subGroup, fields, forceOptional || insideChoice);
+                    } else {
+                        String fieldName = nextTypeName();
+                        fields.put(fieldName, new Schema.Field(fieldName, createGroupSchema(nextTypeName(), subGroup), null, null));
+                    }
                     break;
                 case XSConstants.WILDCARD:
                     field = createField(fields.values(), term, null, forceOptional || optional, array);

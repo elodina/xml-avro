@@ -84,7 +84,7 @@ public class DatumBuilder {
         return (T) createNodeDatum(schema, el, false);
     }
 
-    private Object createNodeDatum(Schema schema, Node source, boolean partOfArray) {
+    private Object createNodeDatum(Schema schema, Node source, boolean setRecordFromNode) {
         if (!Arrays.asList(Node.ELEMENT_NODE, Node.ATTRIBUTE_NODE).contains(source.getNodeType()))
             throw new IllegalArgumentException("Unsupported node type " + source.getNodeType());
 
@@ -95,7 +95,7 @@ public class DatumBuilder {
             return createUnionDatum(schema, source);
 
         if (schema.getType() == Schema.Type.RECORD)
-            return createRecord(schema, (Element) source, partOfArray);
+            return createRecord(schema, (Element) source, setRecordFromNode);
 
         if (schema.getType() == Schema.Type.ARRAY)
           return createArray(schema, (Element) source);
@@ -147,7 +147,7 @@ public class DatumBuilder {
         throw new ConverterException("Unsupported type " + type);
     }
 
-    private GenericData.Record createRecord(Schema schema, Element el, boolean partOfArray) {
+    private GenericData.Record createRecord(Schema schema, Element el, boolean setRecordFieldFromNode) {
         GenericData.Record record = new GenericData.Record(schema);
 
         // initialize arrays and wildcard maps
@@ -162,7 +162,7 @@ public class DatumBuilder {
 
         boolean rootRecord = Source.DOCUMENT.equals(schema.getProp(Source.SOURCE));
 
-        if (partOfArray) {
+        if (setRecordFieldFromNode) {
           setFieldFromNode(schema, record, el);
         } else {
           NodeList nodes = rootRecord ? el.getOwnerDocument().getChildNodes() : el.getChildNodes();
@@ -182,13 +182,14 @@ public class DatumBuilder {
                 List<String> ignoredNames = Arrays.asList("xml:lang");
                 if (ignoredNames.contains(attr.getName())) continue;
 
-                Schema.Field field = getFieldBySource(schema, new Source(attr.getName(), true));
-
-                if (field == null)
+                if(!setRecordFieldFromNode) {
+                  Schema.Field field = getFieldBySource(schema, new Source(attr.getName(), true));
+                  if (field == null)
                     throw new ConverterException("Unsupported attribute " + attr.getName());
 
-                Object datum = createNodeDatum(field.schema(), attr, false);
-                record.put(field.name(), datum);
+                  Object datum = createNodeDatum(field.schema(), attr, false);
+                  record.put(field.name(), datum);
+                }
             }
         }
 
@@ -200,11 +201,17 @@ public class DatumBuilder {
             return;
 
         Element child = (Element) node;
-        Schema.Field field = getFieldBySource(schema, new Source(child.getLocalName(), false));
+        boolean setRecordFromNode = false;
+        final String fieldName = child.getLocalName();
+        Schema.Field field = getFieldBySource(schema, new Source(fieldName, false));
+        if(field == null) {
+          field = getNestedFieldBySource(schema, new Source(fieldName, false));
+          setRecordFromNode = true;
+        }
 
         if (field != null) {
             boolean array = field.schema().getType() == Schema.Type.ARRAY;
-            Object datum = createNodeDatum(!array ? field.schema() : field.schema().getElementType(), child, false);
+          Object datum = createNodeDatum(!array ? field.schema() : field.schema().getElementType(), child, setRecordFromNode);
 
             if (!array)
                 record.put(field.name(), datum);
@@ -215,21 +222,49 @@ public class DatumBuilder {
         } else {
             Schema.Field anyField = schema.getField(Source.WILDCARD);
             if (anyField == null)
-                throw new ConverterException("Type doesn't support any element");
+                throw new ConverterException("Could not find field " + fieldName + " in Avro Schema " + schema.getName() +  " , neither as specific field nor 'any' element");
 
             @SuppressWarnings("unchecked") Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
-            map.put(child.getLocalName(), getContentAsText(child));
+            map.put(fieldName, getContentAsText(child));
         }
     }
 
     Schema.Field getFieldBySource(Schema schema, Source source) {
-        for (Schema.Field field : schema.getFields()) {
+        if(schema.getType() == Schema.Type.UNION) {
+          return getFieldBySource(schema.getTypes().get(1), source);
+        } else {
+          for (Schema.Field field : schema.getFields()) {
             String fieldSource = field.getProp(Source.SOURCE);
-            if (caseSensitiveNames && source.toString().equals(fieldSource)) return field;
-            if (!caseSensitiveNames && source.toString().equalsIgnoreCase(fieldSource)) return field;
-        }
+            if (caseSensitiveNames && source.toString().equals(fieldSource))
+              return field;
+            if (!caseSensitiveNames && source.toString().equalsIgnoreCase(fieldSource))
+              return field;
+          }
 
+          return null;
+        }
+    }
+
+    Schema.Field getNestedFieldBySource(Schema schema, Source source) {
+      if(schema.getType() != Schema.Type.RECORD) {
         return null;
+      }
+
+      for (Schema.Field field : schema.getFields()) {
+        Schema topSchema = field.schema();
+
+        switch (topSchema.getType()) {
+          case ARRAY: {
+            Schema.Field fieldBySource = getFieldBySource(topSchema.getElementType(), source);
+            if (fieldBySource != null) {
+              return field;
+            }
+          }
+          break;
+        }
+      }
+
+      return null;
     }
 
     private String getContentAsText(Element el) {
