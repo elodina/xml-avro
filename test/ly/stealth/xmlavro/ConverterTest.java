@@ -19,10 +19,12 @@ package ly.stealth.xmlavro;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.junit.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.util.Arrays;
 import java.util.Collections;
 
+import org.json.JSONException;
 import static junit.framework.Assert.*;
 
 public class ConverterTest {
@@ -107,14 +109,14 @@ public class ConverterTest {
         Schema.Field field0 = schema.getFields().get(0);
         assertEquals("" + new Source("i"), field0.getProp(Source.SOURCE));
         assertEquals(Schema.Type.UNION, field0.schema().getType());
-        assertEquals(Schema.Type.INT, field0.schema().getTypes().get(0).getType());
-        assertEquals(Schema.Type.NULL, field0.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.INT, field0.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.NULL, field0.schema().getTypes().get(0).getType());
 
         Schema.Field field1 = schema.getFields().get(1);
         assertEquals("" + new Source("r"), field1.getProp(Source.SOURCE));
         assertEquals(Schema.Type.UNION, field1.schema().getType());
-        assertEquals(Schema.Type.RECORD, field1.schema().getTypes().get(0).getType());
-        assertEquals(Schema.Type.NULL, field1.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.RECORD, field1.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.NULL, field1.schema().getTypes().get(0).getType());
 
         String xml = "<i>5</i>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -181,7 +183,7 @@ public class ConverterTest {
 
         Schema.Field field = schema.getField("node");
         Schema subSchema = field.schema();
-        assertSame(schema, subSchema.getTypes().get(0));
+        assertSame(schema, subSchema.getTypes().get(1));
 
         String xml = "<root><node></node></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -215,7 +217,7 @@ public class ConverterTest {
         Schema.Field optional = schema.getField("optional");
         assertEquals(Schema.Type.UNION, optional.schema().getType());
         assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
                 optional.schema().getTypes()
         );
 
@@ -351,7 +353,7 @@ public class ConverterTest {
         assertEquals(Schema.Type.UNION, optionalSchema.getType());
 
         assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
                 optionalSchema.getTypes()
         );
 
@@ -419,16 +421,13 @@ public class ConverterTest {
         Schema.Field sField = schema.getField("s");
         assertEquals(Schema.Type.UNION, sField.schema().getType());
         assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.STRING), Schema.create(Schema.Type.NULL)),
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
                 sField.schema().getTypes()
         );
 
         Schema.Field iField = schema.getField("i");
         assertEquals(Schema.Type.UNION, iField.schema().getType());
-        assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL)),
-                iField.schema().getTypes()
-        );
+        assertEquals(Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.INT)), iField.schema().getTypes());
 
         String xml = "<root><s>s</s></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -437,6 +436,208 @@ public class ConverterTest {
         xml = "<root><i>1</i></root>";
         record = Converter.createDatum(schema, xml);
         assertEquals(1, record.get("i"));
+    }
+
+    @Test
+    public void arrayOfUnboundedChoiceElements() {
+      String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+              "  <xs:element name='root'>" +
+              "    <xs:complexType>" +
+              "      <xs:choice maxOccurs='unbounded'>" +
+              "        <xs:element name='s' type='xs:string'/>" +
+              "        <xs:element name='i' type='xs:int'/>" +
+              "      </xs:choice>" +
+              "    </xs:complexType>" +
+              "  </xs:element>" +
+              "</xs:schema>";
+
+      Schema schema = Converter.createSchema(xsd);
+      assertEquals(Schema.Type.ARRAY, schema.getType());
+      final Schema elementType = schema.getElementType();
+      assertEquals(Schema.Type.RECORD, elementType.getType());
+    }
+
+    @Test
+    public void arrayOfChoiceElements() {
+      String xsd =
+              "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                      "  <xs:element name='root'>" +
+                      "    <xs:complexType>" +
+                      "      <xs:choice maxOccurs='3'>" +
+                      "        <xs:element name='s' type='xs:string'/>" +
+                      "        <xs:element name='i' type='xs:int'/>" +
+                      "      </xs:choice>" +
+                      "    </xs:complexType>" +
+                      "  </xs:element>" +
+                      "</xs:schema>";
+
+      Schema schema = Converter.createSchema(xsd);
+      assertEquals(Schema.Type.ARRAY, schema.getType());
+      final Schema elementType = schema.getElementType();
+      assertEquals(Schema.Type.RECORD, elementType.getType());
+
+      assertEquals(2, elementType.getFields().size());
+
+      String xml = "<root><s>s</s><i>1</i><i>2</i></root>";
+      GenericData.Array record = Converter.createDatum(schema, xml);
+      Object firstRecord = record.get(0);
+      assertTrue(firstRecord instanceof GenericData.Record);
+      assertEquals("s", ((GenericData.Record) firstRecord).get("s"));
+
+      Object secondRecord = record.get(1);
+      assertTrue(secondRecord instanceof GenericData.Record);
+      assertEquals(1, ((GenericData.Record) secondRecord).get("i"));
+
+      Object thirdRecord = record.get(2);
+      assertTrue(thirdRecord instanceof GenericData.Record);
+      assertEquals(2, ((GenericData.Record) thirdRecord).get("i"));
+    }
+
+    @Test
+    public void arrayFromComplexTypeChoiceElements() throws JSONException {
+        // Given
+        String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "      <xs:choice maxOccurs='unbounded'>" +
+                "        <xs:element name='s' type='xs:string'/>" +
+                "        <xs:element name='i' type='xs:int'/>" +
+                "      </xs:choice>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        String xml = "<root>" +
+                "<s>s</s>" +
+                "<i>1</i>" +
+                "<i>2</i>" +
+                "</root>";
+
+        // When
+        Schema schema = Converter.createSchema(xsd);
+        Object datum = Converter.createDatum(schema, xml);
+
+
+        // Then
+        JSONAssert.assertEquals("{\n" +
+                "    \"type\": \"array\",\n" +
+                "    \"items\": {\n" +
+                "        \"type\": \"record\",\n" +
+                "        \"name\": \"type0\",\n" +
+                "        \"fields\": [\n" +
+                "            {\n" +
+                "                \"name\": \"s\",\n" +
+                "                \"type\": [\n" +
+                "                    \"null\",\n" +
+                "                    \"string\"\n" +
+                "                ]\n" +
+                "            },\n" +
+                "            {\n" +
+                "                \"name\": \"i\",\n" +
+                "                \"type\": [\n" +
+                "                    \"null\",\n" +
+                "                    \"int\"\n" +
+                "                ]\n" +
+                "            }\n" +
+                "        ]\n" +
+                "    }\n" +
+                "}", schema.toString(), false);
+
+        JSONAssert.assertEquals("[\n" +
+                "    {\n" +
+                "        \"s\": \"s\"\n" +
+                "    },\n" +
+                "    {\n" +
+                "        \"i\": 1\n" +
+                "    },\n" +
+                "    {\n" +
+                "        \"i\": 2\n" +
+                "    }\n" +
+                "]", datum.toString(), false);
+    }
+
+    @Test
+    public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException {
+        // Given
+        String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "     <xs:sequence>" +
+                "        <xs:element name='s' type='xs:string'/>" +
+                "        <xs:element name='i' type='xs:int'/>" +
+                "        <xs:choice maxOccurs='2'>" +
+                "          <xs:element name='x' type='xs:string'/>" +
+                "          <xs:element name='y' type='xs:int'/>" +
+                "        </xs:choice>" +
+                "     </xs:sequence>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        String xml = "<root>" +
+                "<s>s</s>" +
+                "<i>1</i>" +
+                "<x>x1</x>" +
+                "<y>2</y>" +
+                "</root>";
+
+        // When
+        Schema schema = Converter.createSchema(xsd);
+        Object datum = Converter.createDatum(schema, xml);
+
+        // Then
+        JSONAssert.assertEquals("{\n" +
+                "    \"type\": \"record\",\n" +
+                "    \"fields\": [\n" +
+                "        {\n" +
+                "            \"name\": \"s\",\n" +
+                "            \"type\": \"string\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"name\": \"i\",\n" +
+                "            \"type\": \"int\"\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"name\": \"type1\",\n" +
+                "            \"type\": {\n" +
+                "                \"type\": \"array\",\n" +
+                "                \"items\": {\n" +
+                "                    \"type\": \"record\",\n" +
+                "                    \"name\": \"type2\",\n" +
+                "                    \"fields\": [\n" +
+                "                        {\n" +
+                "                            \"name\": \"x\",\n" +
+                "                            \"type\": [\n" +
+                "                                \"null\",\n" +
+                "                                \"string\"\n" +
+                "                            ]\n" +
+                "                        },\n" +
+                "                        {\n" +
+                "                            \"name\": \"y\",\n" +
+                "                            \"type\": [\n" +
+                "                                \"null\",\n" +
+                "                                \"int\"\n" +
+                "                            ]\n" +
+                "                        }\n" +
+                "                    ]\n" +
+                "                }\n" +
+                "            }\n" +
+                "        }\n" +
+                "    ]\n" +
+                "}", schema.toString(), false);
+
+        JSONAssert.assertEquals("{\n" +
+                "    \"s\": \"s\",\n" +
+                "    \"i\": 1,\n" +
+                "    \"type1\": [\n" +
+                "        {\n" +
+                "            \"x\": \"x1\",\n" +
+                "        },\n" +
+                "        {\n" +
+                "            \"y\": 2\n" +
+                "        }\n" +
+                "    ]\n" +
+                "}", datum.toString(), false);
     }
 
     @Test
