@@ -107,6 +107,7 @@ public class ConverterTest {
 
         Schema schema = Converter.createSchema(xsd);
         assertEquals(Schema.Type.RECORD, schema.getType());
+        assertTrue("Schema should have a valid name", schema.getName() != null && !schema.getName().isEmpty());
         assertEquals(Source.DOCUMENT, schema.getProp(Source.SOURCE));
         assertEquals(2, schema.getFields().size());
 
