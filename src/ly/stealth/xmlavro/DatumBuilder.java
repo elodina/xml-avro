@@ -2,6 +2,7 @@ package ly.stealth.xmlavro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.joda.time.DateTimeZone;
 import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
@@ -42,6 +43,12 @@ public class DatumBuilder {
 
     private Schema schema;
     private boolean caseSensitiveNames = true;
+
+    private static XmlDateTimeFormatter xmlDateTimeFormatter = new XmlDateTimeFormatter();
+
+    public static void setDefaultTimeZone(DateTimeZone defTimeZone) {
+      xmlDateTimeFormatter = new XmlDateTimeFormatter(defTimeZone);
+    }
 
     public DatumBuilder(Schema schema) {
         this.schema = schema;
@@ -116,8 +123,13 @@ public class DatumBuilder {
         if (type == Schema.Type.INT)
             return Integer.parseInt(text);
 
-        if (type == Schema.Type.LONG)
-            return Long.parseLong(text);
+        if (type == Schema.Type.LONG) {
+           if (xmlDateTimeFormatter.isDateTimeXmlValue(text)) {
+             return xmlDateTimeFormatter.parseMillis(text);
+           } else {
+             return Long.parseLong(text);
+           }
+        }
 
         if (type == Schema.Type.FLOAT)
             return Float.parseFloat(text);
