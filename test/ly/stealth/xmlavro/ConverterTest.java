@@ -18,11 +18,11 @@ package ly.stealth.xmlavro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.joda.time.DateTimeZone;
 import org.junit.Test;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.TimeZone;
 
 import static junit.framework.Assert.*;
 
@@ -68,15 +68,14 @@ public class ConverterTest {
         rootPrimitiveWithType("xs:unsignedLong", "18446744073709551615", Schema.Type.STRING, "18446744073709551615");
     }
 
-
     @Test
     public void rootDateTimePrimitive() {
-      rootPrimitiveWithType("xs:dateTime", "2014-10-30T14:58:33", Schema.Type.LONG, new Long(1414681113000L));
-      rootPrimitiveWithType("xs:dateTime", "2014-09-10T12:58:33", Schema.Type.LONG, new Long(1410353913000L));
+      rootPrimitiveWithType("xs:dateTime", "2014-10-30T14:58:33", Schema.Type.LONG, 1414681113000L);
+      rootPrimitiveWithType("xs:dateTime", "2014-09-10T12:58:33", Schema.Type.LONG, 1410353913000L);
 
-      DatumBuilder.setDefaultTimeZone(DateTimeZone.forID("America/Los_Angeles"));
-      rootPrimitiveWithType("xs:dateTime", "2014-10-30T07:58:33", Schema.Type.LONG, new Long(1414681113000L));
-      rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33", Schema.Type.LONG, new Long(1410353913000L));
+      DatumBuilder.setDefaultTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+      rootPrimitiveWithType("xs:dateTime", "2014-10-30T07:58:33", Schema.Type.LONG, 1414681113000L);
+      rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33", Schema.Type.LONG, 1410353913000L);
     }
 
     public <T> void rootPrimitiveWithType(String xmlType, String xmlValue, Schema.Type avroType, T avroValue) {

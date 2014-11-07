@@ -2,11 +2,11 @@ package ly.stealth.xmlavro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
-import org.joda.time.DateTimeZone;
 import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import javax.xml.bind.DatatypeConverter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -41,14 +41,13 @@ public class DatumBuilder {
         ));
     }
 
+    private static TimeZone defaultTimeZone = TimeZone.getTimeZone("UTC-0");
+
+    public static void setDefaultTimeZone(TimeZone timeZone) { defaultTimeZone = timeZone; }
+    public static TimeZone getDefaultTimeZone() { return defaultTimeZone; }
+
     private Schema schema;
     private boolean caseSensitiveNames = true;
-
-    private static XmlDateTimeFormatter xmlDateTimeFormatter = new XmlDateTimeFormatter();
-
-    public static void setDefaultTimeZone(DateTimeZone defTimeZone) {
-      xmlDateTimeFormatter = new XmlDateTimeFormatter(defTimeZone);
-    }
 
     public DatumBuilder(Schema schema) {
         this.schema = schema;
@@ -123,13 +122,8 @@ public class DatumBuilder {
         if (type == Schema.Type.INT)
             return Integer.parseInt(text);
 
-        if (type == Schema.Type.LONG) {
-           if (xmlDateTimeFormatter.isDateTimeXmlValue(text)) {
-             return xmlDateTimeFormatter.parseMillis(text);
-           } else {
-             return Long.parseLong(text);
-           }
-        }
+        if (type == Schema.Type.LONG)
+            return text.contains("T") ? parseDateTime(text) : Long.parseLong(text);
 
         if (type == Schema.Type.FLOAT)
             return Float.parseFloat(text);
@@ -141,6 +135,12 @@ public class DatumBuilder {
             return text;
 
         throw new ConverterException("Unsupported type " + type);
+    }
+
+    private static long parseDateTime(String text) {
+        Calendar c = DatatypeConverter.parseDateTime(text);
+        c.setTimeZone(defaultTimeZone);
+        return c.getTimeInMillis();
     }
 
     private GenericData.Record createRecord(Schema schema, Element el) {
