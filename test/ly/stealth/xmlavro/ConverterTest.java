@@ -47,13 +47,8 @@ public class ConverterTest {
     @Test
     public void rootIntPrimitive() {
         rootPrimitiveWithType("xs:int", "-1", Schema.Type.INT, -1);
-        rootPrimitiveWithType("xs:integer", "-5", Schema.Type.INT, -5);
         rootPrimitiveWithType("xs:unsignedByte", "1", Schema.Type.INT, 1);
         rootPrimitiveWithType("xs:unsignedShort", "5", Schema.Type.INT, 5);
-        rootPrimitiveWithType("xs:negativeInteger", "-10", Schema.Type.INT, -10);
-        rootPrimitiveWithType("xs:nonPositiveInteger", "0", Schema.Type.INT, 0);
-        rootPrimitiveWithType("xs:nonNegativeInteger", "0", Schema.Type.INT, 0);
-        rootPrimitiveWithType("xs:positiveInteger", "10", Schema.Type.INT, 10);
     }
 
     @Test
