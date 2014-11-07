@@ -431,10 +431,7 @@ public class ConverterTest {
 
         Schema.Field iField = schema.getField("i");
         assertEquals(Schema.Type.UNION, iField.schema().getType());
-        assertEquals(
-                Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL)),
-                iField.schema().getTypes()
-        );
+        assertEquals(Arrays.asList(Schema.create(Schema.Type.INT), Schema.create(Schema.Type.NULL)), iField.schema().getTypes());
 
         String xml = "<root><s>s</s></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
@@ -443,6 +440,61 @@ public class ConverterTest {
         xml = "<root><i>1</i></root>";
         record = Converter.createDatum(schema, xml);
         assertEquals(1, record.get("i"));
+    }
+
+    @Test
+    public void arrayOfUnboundedChoiceElements() {
+      String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+              "  <xs:element name='root'>" +
+              "    <xs:complexType>" +
+              "      <xs:choice maxOccurs='unbounded'>" +
+              "        <xs:element name='s' type='xs:string'/>" +
+              "        <xs:element name='i' type='xs:int'/>" +
+              "      </xs:choice>" +
+              "    </xs:complexType>" +
+              "  </xs:element>" +
+              "</xs:schema>";
+
+      Schema schema = Converter.createSchema(xsd);
+      assertEquals(Schema.Type.ARRAY, schema.getType());
+      final Schema elementType = schema.getElementType();
+      assertEquals(Schema.Type.RECORD, elementType.getType());
+    }
+
+    @Test
+    public void arrayOfChoiceElements() {
+      String xsd =
+              "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                      "  <xs:element name='root'>" +
+                      "    <xs:complexType>" +
+                      "      <xs:choice maxOccurs='3'>" +
+                      "        <xs:element name='s' type='xs:string'/>" +
+                      "        <xs:element name='i' type='xs:int'/>" +
+                      "      </xs:choice>" +
+                      "    </xs:complexType>" +
+                      "  </xs:element>" +
+                      "</xs:schema>";
+
+      Schema schema = Converter.createSchema(xsd);
+      assertEquals(Schema.Type.ARRAY, schema.getType());
+      final Schema elementType = schema.getElementType();
+      assertEquals(Schema.Type.RECORD, elementType.getType());
+
+      assertEquals(2, elementType.getFields().size());
+
+      String xml = "<root><s>s</s><i>1</i><i>2</i></root>";
+      GenericData.Array record = Converter.createDatum(schema, xml);
+      Object firstRecord = record.get(0);
+      assertTrue(firstRecord instanceof GenericData.Record);
+      assertEquals("s", ((GenericData.Record) firstRecord).get("s"));
+
+      Object secondRecord = record.get(1);
+      assertTrue(secondRecord instanceof GenericData.Record);
+      assertEquals(1, ((GenericData.Record) secondRecord).get("i"));
+
+      Object thirdRecord = record.get(2);
+      assertTrue(thirdRecord instanceof GenericData.Record);
+      assertEquals(2, ((GenericData.Record) thirdRecord).get("i"));
     }
 
     @Test
