@@ -126,7 +126,7 @@ public class SchemaBuilder {
         for (Source source : schemas.keySet()) {
             Schema schema = schemas.get(source);
             Schema nullSchema = Schema.create(Schema.Type.NULL);
-            Schema optionalSchema = Schema.createUnion(Arrays.asList(schema, nullSchema));
+            Schema optionalSchema = Schema.createUnion(Arrays.asList(nullSchema, schema));
 
             Schema.Field field = new Schema.Field(source.getName(), optionalSchema, null, null);
             field.addProp(Source.SOURCE, "" + source);
@@ -157,7 +157,7 @@ public class SchemaBuilder {
             schema = Schema.createArray(schema);
         else if (optional) {
             Schema nullSchema = Schema.create(Schema.Type.NULL);
-            schema = Schema.createUnion(Arrays.asList(schema, nullSchema));
+            schema = Schema.createUnion(Arrays.asList(nullSchema, schema));
         }
 
         typeLevel--;
