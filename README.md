@@ -5,8 +5,7 @@ Avro schema and avro file are generated from xsd schema and xsd file.
 ## Running Project
 1. git clone;
 2. mvn package;
-3. java -jar target/xml-avro*.jar avro &lt;xmlFile> &lt;avroFile>; // converts specified xml to avro file
-4. java -jar target/xml-avro*.jar xml &lt;avroFile> &lt;xmlFile>;  // converts specified avro to xml file
+3. java -jar target/xml-avro*.jar <xsdFile> <xmlFile> {<avscFile>} {<avroFile>} // converts specified xml+xsd to avro+asvc files
 
 ## Usage
 ```
@@ -16,4 +15,4 @@ Usage: "{-d|--debug} {-b|--baseDir <baseDir>} <xsdFile> <xmlFile> {<avscFile>} {
 ## Restrictions
 Converter has following restriction:
 - xml docs with multiple namespaces are not supported;
-- complex type extension is not supported;
+- complex type extensions are not supported;
