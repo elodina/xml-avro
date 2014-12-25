@@ -18,7 +18,9 @@ package ly.stealth.xmlavro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.json.JSONException;
 import org.junit.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -496,6 +498,132 @@ public class ConverterTest {
       Object thirdRecord = record.get(2);
       assertTrue(thirdRecord instanceof GenericData.Record);
       assertEquals(2, ((GenericData.Record) thirdRecord).get("i"));
+    }
+
+    @Test
+    public void arrayFromComplexTypeChoiceElements() throws JSONException {
+        // Given
+        String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "      <xs:choice maxOccurs='unbounded'>" +
+                "        <xs:element name='s' type='xs:string'/>" +
+                "        <xs:element name='i' type='xs:int'/>" +
+                "      </xs:choice>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        String xml = "<root>" +
+                "<s>s</s>" +
+                "<i>1</i>" +
+                "<i>2</i>" +
+                "</root>";
+
+        // When
+        Schema schema = Converter.createSchema(xsd);
+        Object datum = Converter.createDatum(schema, xml);
+
+
+        // Then
+        JSONAssert.assertEquals("{" +
+                "    'type': 'array'," +
+                "    'items': {" +
+                "        'type': 'record'," +
+                "        'name': 'type0'," +
+                "        'fields': [" +
+                "            {" +
+                "                'name': 's'," +
+                "                'type': ['null', 'string']" +
+                "            }," +
+                "            {" +
+                "                'name': 'i'," +
+                "                'type': ['null', 'int']" +
+                "            }" +
+                "        ]" +
+                "    }" +
+                "}", schema.toString(), false);
+
+        JSONAssert.assertEquals("[" +
+                "{'s': 's'}," +
+                "{'i': 1}," +
+                "{'i': 2}" +
+                "]", datum.toString(), false);
+    }
+
+    @Test
+    public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException {
+        // Given
+        String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "     <xs:sequence>" +
+                "        <xs:element name='s' type='xs:string'/>" +
+                "        <xs:element name='i' type='xs:int'/>" +
+                "        <xs:choice maxOccurs='2'>" +
+                "          <xs:element name='x' type='xs:string'/>" +
+                "          <xs:element name='y' type='xs:int'/>" +
+                "        </xs:choice>" +
+                "     </xs:sequence>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        String xml = 
+                "<root>" +
+                    "<s>s</s>" +
+                    "<i>1</i>" +
+                    "<x>x1</x>" +
+                    "<y>2</y>" +
+                "</root>";
+
+        // When
+        Schema schema = Converter.createSchema(xsd);
+        Object datum = Converter.createDatum(schema, xml);
+
+        // Then
+        JSONAssert.assertEquals("{" +
+                "    'type': 'record'," +
+                "    'fields': [" +
+                "        {" +
+                "            'name': 's'," +
+                "            'type': 'string'" +
+                "        }," +
+                "        {" +
+                "            'name': 'i'," +
+                "            'type': 'int'" +
+                "        }," +
+                "        {" +
+                "            'name': 'type1'," +
+                "            'type': {" +
+                "                'type': 'array'," +
+                "                'items': {" +
+                "                    'type': 'record'," +
+                "                    'name': 'type2'," +
+                "                    'fields': [" +
+                "                        {" +
+                "                            'name': 'x'," +
+                "                            'type': ['null','string']" +
+                "                        }," +
+                "                        {" +
+                "                            'name': 'y'," +
+                "                            'type': ['null','int']" +
+                "                        }" +
+                "                    ]" +
+                "                }" +
+                "            }" +
+                "        }" +
+                "    ]" +
+                "}", schema.toString(), false);
+
+        JSONAssert.assertEquals("{" +
+                "    's': 's'," +
+                "    'i': 1," +
+                "    'type1': [" +
+                "        {'x': 'x1'}," +
+                "        {'y': 2}" +
+                "    ]" +
+                "}", datum.toString(), false);
     }
 
     @Test
