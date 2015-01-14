@@ -153,7 +153,7 @@ public class ConverterTest {
 
         Schema schema = Converter.createSchema(xsd);
         assertEquals(Schema.Type.RECORD, schema.getType());
-        assertEquals("type0", schema.getName());
+        assertEquals("AnonType_root", schema.getName());
         assertEquals(3, schema.getFields().size());
 
         assertEquals(Schema.Type.INT, schema.getField("i").schema().getType());
@@ -530,7 +530,7 @@ public class ConverterTest {
                 "    'type': 'array'," +
                 "    'items': {" +
                 "        'type': 'record'," +
-                "        'name': 'type0'," +
+                "        'name': 'AnonType_root'," +
                 "        'fields': [" +
                 "            {" +
                 "                'name': 's'," +
@@ -594,12 +594,12 @@ public class ConverterTest {
                 "            'type': 'int'" +
                 "        }," +
                 "        {" +
-                "            'name': 'type1'," +
+                "            'name': 'type0'," +
                 "            'type': {" +
                 "                'type': 'array'," +
                 "                'items': {" +
                 "                    'type': 'record'," +
-                "                    'name': 'type2'," +
+                "                    'name': 'type1'," +
                 "                    'fields': [" +
                 "                        {" +
                 "                            'name': 'x'," +
@@ -619,7 +619,7 @@ public class ConverterTest {
         JSONAssert.assertEquals("{" +
                 "    's': 's'," +
                 "    'i': 1," +
-                "    'type1': [" +
+                "    'type0': [" +
                 "        {'x': 'x1'}," +
                 "        {'y': 2}" +
                 "    ]" +

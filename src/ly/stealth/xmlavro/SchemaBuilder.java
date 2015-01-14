@@ -4,6 +4,7 @@ import org.apache.avro.Schema;
 import org.apache.xerces.dom.DOMInputImpl;
 import org.apache.xerces.impl.Constants;
 import org.apache.xerces.impl.xs.XMLSchemaLoader;
+import org.apache.xerces.impl.xs.XSComplexTypeDecl;
 import org.apache.xerces.xni.XMLResourceIdentifier;
 import org.apache.xerces.xni.XNIException;
 import org.apache.xerces.xni.parser.XMLEntityResolver;
@@ -148,8 +149,8 @@ public class SchemaBuilder {
         if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
             schema = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
         else {
-            String name = typeName(type);
-            debug("Creating schema for " + (type.getAnonymous() ? "anonymous type " + name : "type " + type.getName()));
+            String name = complexTypeName(type);
+            debug("Creating schema for type " + name);
 
             schema = schemas.get(name);
             if (schema == null) schema = createRecordSchema(name, (XSComplexTypeDefinition) type);
@@ -253,7 +254,7 @@ public class SchemaBuilder {
                     break;
                 case XSConstants.MODEL_GROUP:
                     XSModelGroup subGroup = (XSModelGroup) term;
-                    if(particle.getMaxOccurs() <=1 && !particle.getMaxOccursUnbounded())
+                    if (particle.getMaxOccurs() <= 1 && !particle.getMaxOccursUnbounded())
                         createGroupFields(subGroup, fields, forceOptional || insideChoice);
                     else {
                         String fieldName = nextTypeName();
@@ -310,8 +311,8 @@ public class SchemaBuilder {
         return name + (duplicates > 0 ? duplicates - 1 : "");
     }
 
-    String typeName(XSTypeDefinition type) {
-        String name = validName(type.getName());
+    String complexTypeName(XSTypeDefinition type) {
+        String name = validName(((XSComplexTypeDecl) type).getTypeName());
         return name != null ? name : nextTypeName();
     }
 
