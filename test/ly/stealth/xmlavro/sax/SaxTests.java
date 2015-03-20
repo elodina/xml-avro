@@ -7,6 +7,7 @@ import org.apache.avro.Schema;
 import org.json.JSONException;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONParser;
 
 import java.io.*;
@@ -67,18 +68,8 @@ public class SaxTests {
         File file = temporaryFolder.newFile("readInAFileAndOutputToFile.temp");
         SaxClient saxClient = new SaxClient();
         Schema schema = Converter.createSchema(TestData.xsd_arrayFromComplexTypeSequenceOfChoiceElements);
-//        FileOutputStream fileOutputStream = new FileOutputStream(file);
-
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-        // open the file
-       // FileInputStream in = new FileInputStream("xml/sax/basic.xml");
-
         InputStream inputStream = new ByteArrayInputStream(TestData.xml_arrayFromComplexTypeSequenceOfChoiceElements.getBytes());
-
-
-
-
 
         try {
             saxClient.readStream(schema, inputStream, out);
@@ -86,14 +77,7 @@ public class SaxTests {
             fail("I was not expecting any failures in this test but got: " + e.getMessage());
         }
 
-        File expectedOutput = new File("test/ly/stealth/xmlavro/sax/outputs/expected_output_one");
-
-
-        Object expected = JSONParser.parseJSON(TestData.json_arrayFromComplexTypeSequenceOfChoiceElements);
-        Object actual =  JSONParser.parseJSON(out.toString());
-
-        Assert.assertEquals("The response should be foo", expected, actual);
-//        Assert.assertEquals("The response should be foo", new String(Files.readAllBytes(expectedOutput.toPath())), new String(Files.readAllBytes(file.toPath())));
+        JSONAssert.assertEquals(TestData.json_arrayFromComplexTypeSequenceOfChoiceElements, out.toString(), false);
 
         file.delete();
         inputStream.close();
