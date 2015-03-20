@@ -16,6 +16,7 @@
  */
 package ly.stealth.xmlavro;
 
+import ly.stealth.xmlavro.interfaces.RequiredTests;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.json.JSONException;
@@ -28,7 +29,7 @@ import java.util.TimeZone;
 
 import static junit.framework.Assert.*;
 
-public class ConverterTest {
+public class ConverterTest implements RequiredTests {
     @Test
     public void basic() {
         String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
