@@ -1,8 +1,8 @@
 package ly.stealth.xmlavro.sax;
 
 import ly.stealth.xmlavro.Converter;
+import ly.stealth.xmlavro.ConverterException;
 import ly.stealth.xmlavro.TestData;
-import ly.stealth.xmlavro.interfaces.RequiredTests;
 import org.apache.avro.Schema;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,13 +10,14 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONParser;
+import org.xml.sax.SAXException;
 
 import java.io.*;
+import java.util.Arrays;
 
-import static junit.framework.Assert.assertEquals;
-import static junit.framework.Assert.fail;
+import static junit.framework.Assert.*;
 
-public class SaxTests implements RequiredTests {
+public class SaxTests {
 
     String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
             "  <xs:element name='root'>" +
@@ -62,35 +63,20 @@ public class SaxTests implements RequiredTests {
 //    }
 
     @Test
-    public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException {
+    public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException, IOException, SAXException {
         TemporaryFolder temporaryFolder = new TemporaryFolder();
-        File file = null;
-        try {
-            file = temporaryFolder.newFile("readInAFileAndOutputToFile.temp");
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail("unexpected");
-        }
+        File file = temporaryFolder.newFile("readInAFileAndOutputToFile.temp");
         SaxClient saxClient = new SaxClient();
-        Schema schema = Converter.createSchema(TestData.xsd_arrayFromComplexTypeSequenceOfChoiceElements);
+        Schema schema = Converter.createSchema(TestData.arrayFromComplexTypeSequenceOfChoiceElements.xsd);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        InputStream inputStream = new ByteArrayInputStream(TestData.xml_arrayFromComplexTypeSequenceOfChoiceElements.getBytes());
+        InputStream inputStream = new ByteArrayInputStream(TestData.arrayFromComplexTypeSequenceOfChoiceElements.xml.getBytes());
 
-        try {
-            saxClient.readStream(schema, inputStream, out);
-        } catch (Exception e) {
-            fail("I was not expecting any failures in this test but got: " + e.getMessage());
-        }
+        saxClient.readStream(schema, inputStream, out);
 
-        JSONAssert.assertEquals(TestData.json_arrayFromComplexTypeSequenceOfChoiceElements, out.toString(), false);
+        JSONAssert.assertEquals(TestData.arrayFromComplexTypeSequenceOfChoiceElements.datum, out.toString(), false);
 
         file.delete();
-        try {
-            inputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail("unexpected");
-        }
+        inputStream.close();
     }
 
     @Test
@@ -98,11 +84,6 @@ public class SaxTests implements RequiredTests {
         fail("Unimplemented");
     }
 
-
-    @Test
-    public void basic() {
-        fail("Unimplemented");
-    }
 
     @Test
     public void rootIntPrimitive() {
@@ -135,43 +116,20 @@ public class SaxTests implements RequiredTests {
     }
 
     @Test
-    public void rootRecord() {
+    public void rootRecord() throws IOException, SAXException, JSONException {
         TemporaryFolder temporaryFolder = new TemporaryFolder();
-        File file = null;
-        try {
-            file = temporaryFolder.newFile("rootRecord.temp");
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail("that was unexpected");
-        }
+        File file = temporaryFolder.newFile("rootRecord.temp");
         SaxClient saxClient = new SaxClient();
-        Schema schema = Converter.createSchema(TestData.xsd_rootRecord);
+        Schema schema = Converter.createSchema(TestData.rootRecord.xsd);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        InputStream inputStream = new ByteArrayInputStream(TestData.xml_rootRecord.getBytes());
-        try {
-            saxClient.readStream(schema, inputStream, out);
-        } catch (Exception e) {
-            fail("I was not expecting any failures in this test but got: " + e.getMessage());
-        }
+        InputStream inputStream = new ByteArrayInputStream(TestData.rootRecord.xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = null;
-        try {
-            record = (JSONObject) JSONParser.parseJSON(out.toString());
-            assertEquals(1, record.get("i"));
-            assertEquals("s", record.get("s"));
-            assertEquals(1.0, record.get("d"));
-        } catch (JSONException e) {
-            e.printStackTrace();
-            fail("unexpected...");
-        }
-
-        try {
-            inputStream.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-            fail("that was not expected at all");
-        }
-        file.delete();
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals(1, record.get("i"));
+        assertEquals("s", record.get("s"));
+        assertEquals(1.0, record.get("d"));
+        inputStream.close();
     }
 
     @Test
@@ -180,8 +138,44 @@ public class SaxTests implements RequiredTests {
     }
 
     @Test
-    public void attributes() {
-        fail("Unimplemented");
+    public void attributes() throws JSONException, IOException, SAXException {
+        Schema schema = Converter.createSchema(TestData.attributes.xsd);
+
+        Schema.Field required = schema.getField("required");
+        assertEquals(Schema.Type.STRING, required.schema().getType());
+
+        assertNull(schema.getField("prohibited"));
+
+        Schema.Field optional = schema.getField("optional");
+        assertEquals(Schema.Type.UNION, optional.schema().getType());
+        assertEquals(
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
+                optional.schema().getTypes()
+        );
+
+        String xml = "<root required='required' optional='optional'/>";
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals("required", record.get("required"));
+        assertEquals("optional", record.get("optional"));
+
+        inputStream.close();
+        out.close();
+
+        xml = "<root required='required'/>";
+        inputStream = new ByteArrayInputStream(xml.getBytes());
+        out = new ByteArrayOutputStream();
+        saxClient.readStream(schema, inputStream, out);
+
+        record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals("required", record.get("required"));
+        assertEquals(record.get("optional"), JSONObject.NULL);
+
+
     }
 
     @Test

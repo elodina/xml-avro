@@ -16,7 +16,6 @@
  */
 package ly.stealth.xmlavro;
 
-import ly.stealth.xmlavro.interfaces.RequiredTests;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
 import org.json.JSONException;
@@ -29,24 +28,7 @@ import java.util.TimeZone;
 
 import static junit.framework.Assert.*;
 
-public class ConverterTest implements RequiredTests {
-    @Test
-    public void basic() {
-        String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                     "  <xs:element name='root' type='xs:string'/>" +
-                     "</xs:schema>";
-
-        Converter.createSchema(xsd);
-
-        try { // no namespace
-            Converter.createSchema("<schema/>");
-            fail();
-        } catch (ConverterException e) {
-            String message = e.getMessage();
-            assertTrue(message, message.contains("http://www.w3.org/2001/XMLSchema"));
-            assertTrue(message, message.contains("namespace"));
-        }
-    }
+public class ConverterTest {
 
     @Test
     public void rootIntPrimitive() {
@@ -139,7 +121,7 @@ public class ConverterTest implements RequiredTests {
 
     @Test
     public void rootRecord() {
-        Schema schema = Converter.createSchema(TestData.xsd_rootRecord);
+        Schema schema = Converter.createSchema(TestData.rootRecord.xsd);
         assertEquals(Schema.Type.RECORD, schema.getType());
         assertEquals("AnonType_root", schema.getName());
         assertEquals(3, schema.getFields().size());
@@ -148,7 +130,7 @@ public class ConverterTest implements RequiredTests {
         assertEquals(Schema.Type.STRING, schema.getField("s").schema().getType());
         assertEquals(Schema.Type.DOUBLE, schema.getField("d").schema().getType());
 
-        GenericData.Record record = Converter.createDatum(schema, TestData.xml_rootRecord);
+        GenericData.Record record = Converter.createDatum(schema, TestData.rootRecord.xml);
 
         assertEquals(1, record.get("i"));
         assertEquals("s", record.get("s"));
@@ -184,18 +166,7 @@ public class ConverterTest implements RequiredTests {
 
     @Test
     public void attributes() {
-        String xsd =
-                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "  <xs:element name='root'>" +
-                "    <xs:complexType>" +
-                "      <xs:attribute name='required' use='required'/>" +
-                "      <xs:attribute name='prohibited' use='prohibited'/>" +
-                "      <xs:attribute name='optional' use='optional'/>" +
-                "    </xs:complexType>" +
-                "  </xs:element>" +
-                "</xs:schema>";
-
-        Schema schema = Converter.createSchema(xsd);
+        Schema schema = Converter.createSchema(TestData.attributes.xsd);
 
         Schema.Field required = schema.getField("required");
         assertEquals(Schema.Type.STRING, required.schema().getType());
@@ -536,45 +507,12 @@ public class ConverterTest implements RequiredTests {
     public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException {
 
         // When
-        Schema schema = Converter.createSchema(TestData.xsd_arrayFromComplexTypeSequenceOfChoiceElements);
-        Object datum = Converter.createDatum(schema, TestData.xml_arrayFromComplexTypeSequenceOfChoiceElements);
+        Schema schema = Converter.createSchema(TestData.arrayFromComplexTypeSequenceOfChoiceElements.xsd);
+        Object datum = Converter.createDatum(schema, TestData.arrayFromComplexTypeSequenceOfChoiceElements.xml);
 
         // Then
-        JSONAssert.assertEquals("{" +
-                "    'type': 'record'," +
-                "    'fields': [" +
-                "        {" +
-                "            'name': 's'," +
-                "            'type': 'string'" +
-                "        }," +
-                "        {" +
-                "            'name': 'i'," +
-                "            'type': 'int'" +
-                "        }," +
-                "        {" +
-                "            'name': 'type0'," +
-                "            'type': {" +
-                "                'type': 'array'," +
-                "                'items': {" +
-                "                    'type': 'record'," +
-                "                    'name': 'type1'," +
-                "                    'fields': [" +
-                "                        {" +
-                "                            'name': 'x'," +
-                "                            'type': ['null','string']" +
-                "                        }," +
-                "                        {" +
-                "                            'name': 'y'," +
-                "                            'type': ['null','int']" +
-                "                        }" +
-                "                    ]" +
-                "                }" +
-                "            }" +
-                "        }" +
-                "    ]" +
-                "}", schema.toString(), false);
-
-        JSONAssert.assertEquals(TestData.json_arrayFromComplexTypeSequenceOfChoiceElements, datum.toString(), false);
+        JSONAssert.assertEquals(TestData.arrayFromComplexTypeSequenceOfChoiceElements.schema, schema.toString(), false);
+        JSONAssert.assertEquals(TestData.arrayFromComplexTypeSequenceOfChoiceElements.datum, datum.toString(), false);
     }
 
     @Test
