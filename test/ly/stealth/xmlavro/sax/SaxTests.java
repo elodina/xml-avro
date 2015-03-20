@@ -5,6 +5,7 @@ import ly.stealth.xmlavro.Converter;
 import ly.stealth.xmlavro.TestData;
 import org.apache.avro.Schema;
 import org.json.JSONException;
+import org.json.JSONObject;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import org.skyscreamer.jsonassert.JSONAssert;
@@ -34,33 +35,33 @@ public class SaxTests {
             "  </xs:element>" +
             "</xs:schema>";
 
-    String xml =
-            "<root>" +
-                    "<s>s</s>" +
-                    "<i>1</i>" +
-                    "<x>x1</x>" +
-                    "<y>2</y>" +
-                    "</root>";
+//    String xml =
+//            "<root>" +
+//                    "<s>s</s>" +
+//                    "<i>1</i>" +
+//                    "<x>x1</x>" +
+//                    "<y>2</y>" +
+//                    "</root>";
 
 
-    @Test
-    public void noFile() throws IOException {
-
-        SaxClient saxClient = new SaxClient();
-        Schema schema = Converter.createSchema(xsd);
-
-        // open the file
-        FileInputStream in = new FileInputStream("file.xml");
-
-        try {
-            saxClient.readStream(schema, in, System.out);
-            fail( "My method didn't throw when I expected it to" );
-        } catch (Exception e) {
-            assertTrue("we should have a file not found here", e.toString().contains("FileNotFoundException"));
-        }
-
-        in.close();
-    }
+//    @Test
+//    public void noFile() throws IOException {
+//
+//        SaxClient saxClient = new SaxClient();
+//        Schema schema = Converter.createSchema(xsd);
+//
+//        // open the file
+//        FileInputStream in = new FileInputStream("file.xml");
+//
+//        try {
+//            saxClient.readStream(schema, in, System.out);
+//            fail( "My method didn't throw when I expected it to" );
+//        } catch (Exception e) {
+//            assertTrue("we should have a file not found here", e.toString().contains("FileNotFoundException"));
+//        }
+//
+//        in.close();
+//    }
 
     @Test
     public void arrayFromComplexTypeSequenceOfChoiceElements() throws IOException, JSONException {
@@ -85,23 +86,26 @@ public class SaxTests {
 
 
     @Test
-    public void rootRecord() throws IOException {
+    public void rootRecord() throws IOException, JSONException {
         TemporaryFolder temporaryFolder = new TemporaryFolder();
         File file = temporaryFolder.newFile("rootRecord.temp");
         SaxClient saxClient = new SaxClient();
-        Schema schema = Converter.createSchema(xsd);
-        FileOutputStream fileOutputStream = new FileOutputStream(file);
+        Schema schema = Converter.createSchema(TestData.xsd_rootRecord);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         InputStream inputStream = new ByteArrayInputStream(TestData.xml_rootRecord.getBytes());
         try {
-            saxClient.readStream(schema, inputStream, fileOutputStream);
+            saxClient.readStream(schema, inputStream, out);
         } catch (Exception e) {
             fail("I was not expecting any failures in this test but got: " + e.getMessage());
         }
 
-        File expectedOutput = new File("test/ly/stealth/xmlavro/sax/outputs/expected_output_one");
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
 
-        Assert.assertEquals("The response should be foo", new String(Files.readAllBytes(expectedOutput.toPath())), new String(Files.readAllBytes(file.toPath())));
+        assertEquals(1, record.get("i"));
+        assertEquals("s", record.get("s"));
+        assertEquals(1.0, record.get("d"));
 
+        inputStream.close();
         file.delete();
     }
 
