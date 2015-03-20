@@ -20,49 +20,6 @@ import static junit.framework.Assert.*;
 
 public class SaxTests {
 
-//    String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-//            "  <xs:element name='root'>" +
-//            "    <xs:complexType>" +
-//            "     <xs:sequence>" +
-//            "        <xs:element name='s' type='xs:string'/>" +
-//            "        <xs:element name='i' type='xs:int'/>" +
-//            "        <xs:choice maxOccurs='2'>" +
-//            "          <xs:element name='x' type='xs:string'/>" +
-//            "          <xs:element name='y' type='xs:int'/>" +
-//            "        </xs:choice>" +
-//            "     </xs:sequence>" +
-//            "    </xs:complexType>" +
-//            "  </xs:element>" +
-//            "</xs:schema>";
-
-//    String xml =
-//            "<root>" +
-//                    "<s>s</s>" +
-//                    "<i>1</i>" +
-//                    "<x>x1</x>" +
-//                    "<y>2</y>" +
-//                    "</root>";
-
-
-//    @Test
-//    public void noFile() throws IOException {
-//
-//        SaxClient saxClient = new SaxClient();
-//        Schema schema = Converter.createSchema(xsd);
-//
-//        // open the file
-//        FileInputStream in = new FileInputStream("file.xml");
-//
-//        try {
-//            saxClient.readStream(schema, in, System.out);
-//            fail( "My method didn't throw when I expected it to" );
-//        } catch (Exception e) {
-//            assertTrue("we should have a file not found here", e.toString().contains("FileNotFoundException"));
-//        }
-//
-//        in.close();
-//    }
-
     @Test
     public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException, IOException, SAXException {
         SaxClient saxClient = new SaxClient();
@@ -136,10 +93,9 @@ public class SaxTests {
         Schema subSchema = field.schema();
         assertSame(schema, subSchema.getTypes().get(1));
 
-        String xml = "<root><node></node></root>";
         SaxClient saxClient = new SaxClient();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        InputStream inputStream = new ByteArrayInputStream(TestData.nestedRecursiveRecords.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
         JSONAssert.assertEquals(TestData.nestedRecursiveRecords.datum, out.toString(), false);
@@ -187,8 +143,17 @@ public class SaxTests {
     }
 
     @Test
-    public void uniqueFieldNames() {
-        fail("Unimplemented");
+    public void uniqueFieldNames() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.uniqueFieldNames.xsd);
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(TestData.uniqueFieldNames.xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals("value", record.get("field"));
+        assertEquals("value0", record.get("field0"));
     }
 
     @Test

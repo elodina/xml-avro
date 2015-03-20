@@ -125,7 +125,29 @@ public class TestData {
 
         public static final String datum = "{\"node\": {\"node\": null}}";
 
+        public static final String xml = "<root><node></node></root>";
+
     }
+
+    public class uniqueFieldNames {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "  <xs:complexType name='type'>" +
+                        "    <xs:sequence>" +
+                        "      <xs:element name='field' type='xs:string'/>" +
+                        "    </xs:sequence>" +
+                        "    <xs:attribute name='field' type='xs:string'/>" +
+                        "  </xs:complexType>" +
+                        "  <xs:element name='root' type='type'/>" +
+                        "</xs:schema>";
+
+        public static final String xml = "<root field='value'><field>value0</field></root>";
+
+    }
+
+
+
 
 
 

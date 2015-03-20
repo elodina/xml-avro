@@ -145,8 +145,7 @@ public class ConverterTest {
         Schema subSchema = field.schema();
         assertSame(schema, subSchema.getTypes().get(1));
 
-        String xml = "<root><node></node></root>";
-        GenericData.Record record = Converter.createDatum(schema, xml);
+        GenericData.Record record = Converter.createDatum(schema, TestData.nestedRecursiveRecords.xml);
 
         JSONAssert.assertEquals(TestData.nestedRecursiveRecords.datum, record.toString(), false);
 
@@ -185,29 +184,9 @@ public class ConverterTest {
 
     @Test
     public void uniqueFieldNames() {
-        String xsd =
-                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "  <xs:complexType name='type'>" +
-                "    <xs:sequence>" +
-                "      <xs:element name='field' type='xs:string'/>" +
-                "    </xs:sequence>" +
-                "    <xs:attribute name='field' type='xs:string'/>" +
-                "  </xs:complexType>" +
-                "  <xs:element name='root' type='type'/>" +
-                "</xs:schema>";
+        Schema schema = Converter.createSchema(TestData.uniqueFieldNames.xsd);
 
-        Schema schema = Converter.createSchema(xsd);
-
-        assertEquals(2, schema.getFields().size());
-        Schema.Field field = schema.getField("field");
-        assertNotNull(field);
-        assertEquals("" + new Source("field", true), field.getProp(Source.SOURCE));
-
-        Schema.Field field0 = schema.getField("field0");
-        assertEquals("" + new Source("field", false), field0.getProp(Source.SOURCE));
-
-        String xml = "<root field='value'><field>value0</field></root>";
-        GenericData.Record record = Converter.createDatum(schema, xml);
+        GenericData.Record record = Converter.createDatum(schema, TestData.uniqueFieldNames.xml);
 
         assertEquals("value", record.get("field"));
         assertEquals("value0", record.get("field0"));

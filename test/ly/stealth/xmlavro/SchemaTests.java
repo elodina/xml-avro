@@ -1,9 +1,10 @@
 package ly.stealth.xmlavro;
 
+import org.apache.avro.Schema;
 import org.junit.Test;
 
-import static junit.framework.Assert.assertTrue;
-import static junit.framework.Assert.fail;
+import static junit.framework.Assert.*;
+import static junit.framework.Assert.assertEquals;
 
 public class SchemaTests {
 
@@ -23,6 +24,19 @@ public class SchemaTests {
             assertTrue(message, message.contains("http://www.w3.org/2001/XMLSchema"));
             assertTrue(message, message.contains("namespace"));
         }
+    }
+
+    @Test
+    public void uniqueFieldNames() {
+        Schema schema = Converter.createSchema(TestData.uniqueFieldNames.xsd);
+
+        assertEquals(2, schema.getFields().size());
+        Schema.Field field = schema.getField("field");
+        assertNotNull(field);
+        assertEquals("" + new Source("field", true), field.getProp(Source.SOURCE));
+
+        Schema.Field field0 = schema.getField("field0");
+        assertEquals("" + new Source("field", false), field0.getProp(Source.SOURCE));
     }
 
 }
