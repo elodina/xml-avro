@@ -1,38 +1,39 @@
 package ly.stealth.xmlavro.sax;
 
 import ly.stealth.xmlavro.Converter;
-import ly.stealth.xmlavro.ConverterException;
 import ly.stealth.xmlavro.TestData;
 import org.apache.avro.Schema;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONParser;
 import org.xml.sax.SAXException;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Arrays;
 
 import static junit.framework.Assert.*;
 
 public class SaxTests {
 
-    String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-            "  <xs:element name='root'>" +
-            "    <xs:complexType>" +
-            "     <xs:sequence>" +
-            "        <xs:element name='s' type='xs:string'/>" +
-            "        <xs:element name='i' type='xs:int'/>" +
-            "        <xs:choice maxOccurs='2'>" +
-            "          <xs:element name='x' type='xs:string'/>" +
-            "          <xs:element name='y' type='xs:int'/>" +
-            "        </xs:choice>" +
-            "     </xs:sequence>" +
-            "    </xs:complexType>" +
-            "  </xs:element>" +
-            "</xs:schema>";
+//    String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+//            "  <xs:element name='root'>" +
+//            "    <xs:complexType>" +
+//            "     <xs:sequence>" +
+//            "        <xs:element name='s' type='xs:string'/>" +
+//            "        <xs:element name='i' type='xs:int'/>" +
+//            "        <xs:choice maxOccurs='2'>" +
+//            "          <xs:element name='x' type='xs:string'/>" +
+//            "          <xs:element name='y' type='xs:int'/>" +
+//            "        </xs:choice>" +
+//            "     </xs:sequence>" +
+//            "    </xs:complexType>" +
+//            "  </xs:element>" +
+//            "</xs:schema>";
 
 //    String xml =
 //            "<root>" +
@@ -64,8 +65,6 @@ public class SaxTests {
 
     @Test
     public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException, IOException, SAXException {
-        TemporaryFolder temporaryFolder = new TemporaryFolder();
-        File file = temporaryFolder.newFile("readInAFileAndOutputToFile.temp");
         SaxClient saxClient = new SaxClient();
         Schema schema = Converter.createSchema(TestData.arrayFromComplexTypeSequenceOfChoiceElements.xsd);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -75,7 +74,6 @@ public class SaxTests {
 
         JSONAssert.assertEquals(TestData.arrayFromComplexTypeSequenceOfChoiceElements.datum, out.toString(), false);
 
-        file.delete();
         inputStream.close();
     }
 
@@ -117,8 +115,6 @@ public class SaxTests {
 
     @Test
     public void rootRecord() throws IOException, SAXException, JSONException {
-        TemporaryFolder temporaryFolder = new TemporaryFolder();
-        File file = temporaryFolder.newFile("rootRecord.temp");
         SaxClient saxClient = new SaxClient();
         Schema schema = Converter.createSchema(TestData.rootRecord.xsd);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -133,8 +129,20 @@ public class SaxTests {
     }
 
     @Test
-    public void nestedRecursiveRecords() {
-        fail("Unimplemented");
+    public void nestedRecursiveRecords() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.nestedRecursiveRecords.xsd);
+
+        Schema.Field field = schema.getField("node");
+        Schema subSchema = field.schema();
+        assertSame(schema, subSchema.getTypes().get(1));
+
+        String xml = "<root><node></node></root>";
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONAssert.assertEquals(TestData.nestedRecursiveRecords.datum, out.toString(), false);
     }
 
     @Test

@@ -111,6 +111,21 @@ public class TestData {
 
     }
 
+    public class nestedRecursiveRecords {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:complexType name='type'>" +
+                "    <xs:sequence>" +
+                "      <xs:element name='node' type='type' minOccurs='0'/>" +
+                "    </xs:sequence>" +
+                "  </xs:complexType>" +
+                "  <xs:element name='root' type='type'/>" +
+                "</xs:schema>";
+
+        public static final String datum = "{\"node\": {\"node\": null}}";
+
+    }
 
 
 

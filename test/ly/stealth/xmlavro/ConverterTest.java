@@ -138,18 +138,8 @@ public class ConverterTest {
     }
 
     @Test
-    public void nestedRecursiveRecords() {
-        String xsd =
-                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "  <xs:complexType name='type'>" +
-                "    <xs:sequence>" +
-                "      <xs:element name='node' type='type' minOccurs='0'/>" +
-                "    </xs:sequence>" +
-                "  </xs:complexType>" +
-                "  <xs:element name='root' type='type'/>" +
-                "</xs:schema>";
-
-        Schema schema = Converter.createSchema(xsd);
+    public void nestedRecursiveRecords() throws JSONException {
+        Schema schema = Converter.createSchema(TestData.nestedRecursiveRecords.xsd);
 
         Schema.Field field = schema.getField("node");
         Schema subSchema = field.schema();
@@ -157,6 +147,8 @@ public class ConverterTest {
 
         String xml = "<root><node></node></root>";
         GenericData.Record record = Converter.createDatum(schema, xml);
+
+        JSONAssert.assertEquals(TestData.nestedRecursiveRecords.datum, record.toString(), false);
 
         GenericData.Record child = (GenericData.Record) record.get("node");
         assertEquals(record.getSchema(), child.getSchema());
