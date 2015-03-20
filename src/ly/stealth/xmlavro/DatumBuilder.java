@@ -90,6 +90,11 @@ public class DatumBuilder {
         return (T) createNodeDatum(schema, el, false);
     }
 
+//    @SuppressWarnings("unchecked")
+//    public <T> T createDatumSetRecord(Element el) {
+//        return (T) createNodeDatum(schema, el, true);
+//    }
+
     private Object createNodeDatum(Schema schema, Node source, boolean setRecordFromNode) {
         if (!Arrays.asList(Node.ELEMENT_NODE, Node.ATTRIBUTE_NODE).contains(source.getNodeType()))
             throw new IllegalArgumentException("Unsupported node type " + source.getNodeType());
@@ -108,6 +113,8 @@ public class DatumBuilder {
 
         throw new ConverterException("Unsupported schema type " + schema.getType());
     }
+
+
 
     private Object createArray(Schema schema, Element el) {
         NodeList childNodes = el.getChildNodes();

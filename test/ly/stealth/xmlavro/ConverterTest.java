@@ -138,20 +138,7 @@ public class ConverterTest {
 
     @Test
     public void rootRecord() {
-        String xsd =
-                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "   <xs:element name='root'>" +
-                "     <xs:complexType>" +
-                "       <xs:sequence>" +
-                "         <xs:element name='i' type='xs:int'/>" +
-                "         <xs:element name='s' type='xs:string'/>" +
-                "         <xs:element name='d' type='xs:double'/>" +
-                "       </xs:sequence>" +
-                "     </xs:complexType>" +
-                "   </xs:element>" +
-                "</xs:schema>";
-
-        Schema schema = Converter.createSchema(xsd);
+        Schema schema = Converter.createSchema(TestData.xsd_rootRecord);
         assertEquals(Schema.Type.RECORD, schema.getType());
         assertEquals("AnonType_root", schema.getName());
         assertEquals(3, schema.getFields().size());
@@ -160,14 +147,7 @@ public class ConverterTest {
         assertEquals(Schema.Type.STRING, schema.getField("s").schema().getType());
         assertEquals(Schema.Type.DOUBLE, schema.getField("d").schema().getType());
 
-        String xml =
-                "<root>" +
-                "  <i>1</i>" +
-                "  <s>s</s>" +
-                "  <d>1.0</d>" +
-                "</root>";
-
-        GenericData.Record record = Converter.createDatum(schema, xml);
+        GenericData.Record record = Converter.createDatum(schema, TestData.xml_rootRecord);
 
         assertEquals(1, record.get("i"));
         assertEquals("s", record.get("s"));
@@ -553,33 +533,10 @@ public class ConverterTest {
 
     @Test
     public void arrayFromComplexTypeSequenceOfChoiceElements() throws JSONException {
-        // Given
-        String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "  <xs:element name='root'>" +
-                "    <xs:complexType>" +
-                "     <xs:sequence>" +
-                "        <xs:element name='s' type='xs:string'/>" +
-                "        <xs:element name='i' type='xs:int'/>" +
-                "        <xs:choice maxOccurs='2'>" +
-                "          <xs:element name='x' type='xs:string'/>" +
-                "          <xs:element name='y' type='xs:int'/>" +
-                "        </xs:choice>" +
-                "     </xs:sequence>" +
-                "    </xs:complexType>" +
-                "  </xs:element>" +
-                "</xs:schema>";
-
-        String xml = 
-                "<root>" +
-                    "<s>s</s>" +
-                    "<i>1</i>" +
-                    "<x>x1</x>" +
-                    "<y>2</y>" +
-                "</root>";
 
         // When
-        Schema schema = Converter.createSchema(xsd);
-        Object datum = Converter.createDatum(schema, xml);
+        Schema schema = Converter.createSchema(TestData.xsd_arrayFromComplexTypeSequenceOfChoiceElements);
+        Object datum = Converter.createDatum(schema, TestData.xml_arrayFromComplexTypeSequenceOfChoiceElements);
 
         // Then
         JSONAssert.assertEquals("{" +
@@ -616,14 +573,7 @@ public class ConverterTest {
                 "    ]" +
                 "}", schema.toString(), false);
 
-        JSONAssert.assertEquals("{" +
-                "    's': 's'," +
-                "    'i': 1," +
-                "    'type0': [" +
-                "        {'x': 'x1'}," +
-                "        {'y': 2}" +
-                "    ]" +
-                "}", datum.toString(), false);
+        JSONAssert.assertEquals(TestData.json_arrayFromComplexTypeSequenceOfChoiceElements, datum.toString(), false);
     }
 
     @Test

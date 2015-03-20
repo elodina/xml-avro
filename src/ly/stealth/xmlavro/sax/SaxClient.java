@@ -8,23 +8,20 @@ import org.xml.sax.helpers.*;
 
 public class SaxClient {
 
-    public void readFile(Schema schema, String xmlFileName, OutputStream outputStream) throws SAXException, IOException {
+    public void readStream(Schema schema, InputStream inputStream, OutputStream outputStream) throws SAXException, IOException {
         // specify the SAXParser
         XMLReader parser = XMLReaderFactory.createXMLReader(
                 "com.sun.org.apache.xerces.internal.parsers.SAXParser"
         );
         // setup the handler
-        ContentHandler handler = new Handler(outputStream);
+        ContentHandler handler = new Handler(schema, outputStream);
         parser.setContentHandler(handler);
-        // open the file
-        FileInputStream in = new FileInputStream(xmlFileName);
-        InputSource source = new InputSource(in);
+        // convert to input source
+        InputSource source = new InputSource(inputStream);
         // parse the data
         parser.parse(source);
         // print an empty line under the data
         System.out.println();
-        // close the file
-        in.close();
     }
 
 }
