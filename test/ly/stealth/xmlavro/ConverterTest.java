@@ -55,6 +55,8 @@ public class ConverterTest {
 
     @Test
     public void rootDateTimePrimitive() {
+      DatumBuilder.setDefaultTimeZone(TimeZone.getTimeZone("UTC-0"));
+
       rootPrimitiveWithType("xs:dateTime", "2014-10-30T14:58:33", Schema.Type.LONG, 1414681113000L);
       rootPrimitiveWithType("xs:dateTime", "2014-09-10T12:58:33", Schema.Type.LONG, 1410353913000L);
 

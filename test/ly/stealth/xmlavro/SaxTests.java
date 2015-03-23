@@ -78,6 +78,8 @@ public class SaxTests {
 
     @Test
     public void rootDateTimePrimitive() throws IOException, SAXException {
+        DatumBuilder.setDefaultTimeZone(TimeZone.getTimeZone("UTC-0"));
+
         assertEquals(1414681113000L, Long.parseLong(rootPrimitiveWithType("xs:dateTime", "2014-10-30T14:58:33", null).trim()));
         assertEquals(1410353913000L, Long.parseLong(rootPrimitiveWithType("xs:dateTime", "2014-09-10T12:58:33", null).trim()));
 
