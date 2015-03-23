@@ -38,8 +38,8 @@ public class Handler extends DefaultHandler {
         this.outputStream = outputStream;
         this.schema = schema;
 
-
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
         try {
             _document = factory.newDocumentBuilder().newDocument();
         } catch (ParserConfigurationException e) {
@@ -53,8 +53,13 @@ public class Handler extends DefaultHandler {
         return this;
     }
 
+//    @Override
+//    public void startDocument() {
+//        //_nodeStk.push(_root.);
+//    }
+
     public void startElement(String namespaceURI, String localName, String qualifiedName, Attributes atts) throws SAXException {
-        final Element tmp = (Element) _document.createElementNS(namespaceURI, qualifiedName);
+        final Element tmp = _document.createElementNS(namespaceURI, qualifiedName);
 
         // Add namespace declarations first
         if (_namespaceDecls != null)
@@ -95,10 +100,11 @@ public class Handler extends DefaultHandler {
 
         // Append this new node onto current stack node
         if (_nodeStk.size() > 0) {
-            Node last = (Node) _nodeStk.peek();
+            Node last = _nodeStk.peek();
             last.appendChild(tmp);
+        } else {
+            _document.appendChild(tmp);
         }
-
         // Push this node onto stack
         _nodeStk.push(tmp);
     }
@@ -133,7 +139,7 @@ public class Handler extends DefaultHandler {
 
     public void characters(char[] ch, int start, int length) {
         final String text = new String(ch, start, length).trim();
-        final Node last = (Node)_nodeStk.peek();
+        final Node last = _nodeStk.peek();
 
         if (!text.isEmpty())
             last.setTextContent(text);

@@ -186,8 +186,17 @@ public class ConverterTest {
         assertEquals(2, map.size());
         assertEquals("field0", map.get("field0"));
         assertEquals("field1", map.get("field1"));
+    }
 
-        record = Converter.createDatum(schema, TestData.recordWithWildcardField.xmlWithNoWildcard);
+    @Test
+    public void recordWithNoWildcardField() {
+        Schema schema = Converter.createSchema(TestData.recordWithWildcardField.xsd);
+        assertEquals(2, schema.getFields().size());
+
+        Schema.Field wildcardField = schema.getField(Source.WILDCARD);
+        assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
+
+        GenericData.Record record = Converter.createDatum(schema, TestData.recordWithWildcardField.xmlWithNoWildcard);
 
         assertEquals("field", record.get("field"));
         assertEquals(Collections.emptyMap(), record.get(Source.WILDCARD));

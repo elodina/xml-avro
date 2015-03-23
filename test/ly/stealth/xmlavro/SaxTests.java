@@ -89,18 +89,18 @@ public class SaxTests {
 
     @Test
     public void severalRootsOne() throws IOException, SAXException, JSONException {
-        fail("Unimplemented");
-//        Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
-//
-//        String xml = "<i>5</i>";
-//        SaxClient saxClient = new SaxClient();
-//        ByteArrayOutputStream out = new ByteArrayOutputStream();
-//        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
-//        saxClient.readStream(schema, inputStream, out);
-//
-//        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-//        assertEquals(JSONObject.NULL, record.get("r"));
-//        assertEquals(5, record.get("i"));
+//        fail("Unimplemented");
+        Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
+
+        String xml = "<i>5</i>";
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals(JSONObject.NULL, record.get("r"));
+        assertEquals(5, record.get("i"));
     }
 
     @Test
@@ -201,35 +201,47 @@ public class SaxTests {
     }
 
     @Test
-    public void recordWithWildcardField() throws IOException, SAXException, JSONException {
-//        Schema schema = Converter.createSchema(TestData.recordWithWildcardField.xsd);
-//        assertEquals(2, schema.getFields().size());
-//
-//        Schema.Field wildcardField = schema.getField(Source.WILDCARD);
-//        assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
-//
-//        SaxClient saxClient = new SaxClient();
-//        ByteArrayOutputStream out = new ByteArrayOutputStream();
-//        InputStream inputStream = new ByteArrayInputStream(TestData.recordWithWildcardField.xmlWithTwoWildcard.getBytes());
-//        saxClient.readStream(schema, inputStream, out);
-//
-//        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-//        assertEquals("field", record.get("field"));
-//
-//
-//        @SuppressWarnings("unchecked")
-//        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(Source.WILDCARD);
-//
-//        assertEquals(2, map.size());
-//        assertEquals("field0", map.get("field0"));
-//        assertEquals("field1", map.get("field1"));
-//
-//        record = Converter.createDatum(schema, TestData.recordWithWildcardField.xmlWithNoWildcard);
-//
-//        assertEquals("field", record.get("field"));
-//        assertEquals(Collections.emptyMap(), record.get(Source.WILDCARD));
+    public void recordWithWildcardFieldOne() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.recordWithWildcardField.xsd);
+        assertEquals(2, schema.getFields().size());
 
-        fail("Unimplemented");
+        Schema.Field wildcardField = schema.getField(Source.WILDCARD);
+        assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(TestData.recordWithWildcardField.xmlWithTwoWildcard.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals("field", record.get("field"));
+
+
+        @SuppressWarnings("unchecked")
+        JSONObject map = (JSONObject) record.get(Source.WILDCARD);
+
+        assertEquals(2, map.length());
+        assertEquals("field0", map.get("field0"));
+        assertEquals("field1", map.get("field1"));
+    }
+
+    @Test
+    public void recordWithNoWildcardField() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.recordWithWildcardField.xsd);
+        assertEquals(2, schema.getFields().size());
+
+        Schema.Field wildcardField = schema.getField(Source.WILDCARD);
+        assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(TestData.recordWithWildcardField.xmlWithNoWildcard.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+
+        assertEquals("field", record.get("field"));
+        assertEquals(new JSONObject().toString(), record.get(Source.WILDCARD).toString());
     }
 
     @Test

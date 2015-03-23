@@ -185,7 +185,7 @@ public class DatumBuilder {
         if (setRecordFieldFromNode) {
           setFieldFromNode(schema, record, el);
         } else {
-          NodeList nodes = rootRecord ? el.getOwnerDocument().getChildNodes() : el.getChildNodes();
+            NodeList nodes = rootRecord ? el.getOwnerDocument().getChildNodes() : el.getChildNodes();
             for (int i = 0; i < nodes.getLength(); i++) {
               setFieldFromNode(schema, record, nodes.item(i));
             }
