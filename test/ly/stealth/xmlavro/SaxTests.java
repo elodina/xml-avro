@@ -1,8 +1,11 @@
-package ly.stealth.xmlavro.sax;
+package ly.stealth.xmlavro;
 
 import ly.stealth.xmlavro.Converter;
+import ly.stealth.xmlavro.Source;
 import ly.stealth.xmlavro.TestData;
+import ly.stealth.xmlavro.sax.SaxClient;
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -15,6 +18,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.Collections;
 
 import static junit.framework.Assert.*;
 
@@ -157,7 +161,34 @@ public class SaxTests {
     }
 
     @Test
-    public void recordWithWildcardField() {
+    public void recordWithWildcardField() throws IOException, SAXException, JSONException {
+//        Schema schema = Converter.createSchema(TestData.recordWithWildcardField.xsd);
+//        assertEquals(2, schema.getFields().size());
+//
+//        Schema.Field wildcardField = schema.getField(Source.WILDCARD);
+//        assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
+//
+//        SaxClient saxClient = new SaxClient();
+//        ByteArrayOutputStream out = new ByteArrayOutputStream();
+//        InputStream inputStream = new ByteArrayInputStream(TestData.recordWithWildcardField.xmlWithTwoWildcard.getBytes());
+//        saxClient.readStream(schema, inputStream, out);
+//
+//        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+//        assertEquals("field", record.get("field"));
+//
+//
+//        @SuppressWarnings("unchecked")
+//        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(Source.WILDCARD);
+//
+//        assertEquals(2, map.size());
+//        assertEquals("field0", map.get("field0"));
+//        assertEquals("field1", map.get("field1"));
+//
+//        record = Converter.createDatum(schema, TestData.recordWithWildcardField.xmlWithNoWildcard);
+//
+//        assertEquals("field", record.get("field"));
+//        assertEquals(Collections.emptyMap(), record.get(Source.WILDCARD));
+
         fail("Unimplemented");
     }
 
@@ -167,9 +198,42 @@ public class SaxTests {
     }
 
     @Test
-    public void optionalElementValues() {
-        fail("Unimplemented");
+    public void optionalElementValues() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.optionalElementValues.xsd);
+
+        String xml = "<root><required>required</required></root>";
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+
+        assertEquals("required", record.get("required"));
+        assertEquals(record.get("optional"), JSONObject.NULL);
     }
+
+    @Test
+    public void optionalElementValuesTestTwo() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.optionalElementValues.xsd);
+
+        String xml = "<root>" +
+                "  <required>required</required>" +
+                "  <optional>optional</optional>" +
+                "</root>";
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+
+        assertEquals("optional", record.get("optional"));
+    }
+
+
 
     @Test
     public void array() {

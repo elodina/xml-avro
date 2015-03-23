@@ -146,6 +146,49 @@ public class TestData {
 
     }
 
+    public class recordWithWildcardField {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "  <xs:complexType name='type'>" +
+                        "    <xs:sequence>" +
+                        "      <xs:element name='field' type='xs:string'/>" +
+                        "      <xs:any/>" +
+                        "    </xs:sequence>" +
+                        "  </xs:complexType>" +
+                        "  <xs:element name='root' type='type'/>" +
+                        "</xs:schema>";
+
+        // Two wildcard-matched elements
+        public static final String xmlWithTwoWildcard =
+                "<root>" +
+                        "  <field>field</field>" +
+                        "  <field0>field0</field0>" +
+                        "  <field1>field1</field1>" +
+                        "</root>";
+
+        // No wildcard-matched element
+        public static final String xmlWithNoWildcard = "<root><field>field</field></root>";
+
+    }
+
+    public class optionalElementValues {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "  <xs:element name='root'>" +
+                        "    <xs:complexType>" +
+                        "      <xs:sequence>" +
+                        "        <xs:element name='required' type='xs:string'/>" +
+                        "        <xs:element name='optional' type='xs:string' minOccurs='0'/>" +
+                        "      </xs:sequence>" +
+                        "    </xs:complexType>" +
+                        "  </xs:element>" +
+                        "</xs:schema>";
+
+
+    }
+
 
 
 

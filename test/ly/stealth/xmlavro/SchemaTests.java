@@ -1,7 +1,10 @@
 package ly.stealth.xmlavro;
 
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.junit.Test;
+
+import java.util.Arrays;
 
 import static junit.framework.Assert.*;
 import static junit.framework.Assert.assertEquals;
@@ -37,6 +40,24 @@ public class SchemaTests {
 
         Schema.Field field0 = schema.getField("field0");
         assertEquals("" + new Source("field", false), field0.getProp(Source.SOURCE));
+    }
+
+    @Test
+    public void optionalElementValues() {
+        Schema schema = Converter.createSchema(TestData.optionalElementValues.xsd);
+        assertEquals(2, schema.getFields().size());
+
+        Schema.Field requiredField = schema.getField("required");
+        assertEquals(Schema.Type.STRING, requiredField.schema().getType());
+
+        Schema.Field optionalField = schema.getField("optional");
+        Schema optionalSchema = optionalField.schema();
+        assertEquals(Schema.Type.UNION, optionalSchema.getType());
+
+        assertEquals(
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
+                optionalSchema.getTypes()
+        );
     }
 
 }

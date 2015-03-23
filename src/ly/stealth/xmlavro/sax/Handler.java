@@ -35,10 +35,6 @@ public class Handler extends DefaultHandler {
         this.outputStream = outputStream;
         this.schema = schema;
 
-        for (Schema.Field field : schema.getFields()) {
-            System.out.println(field.name());
-        }
-
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         try {
             _document = factory.newDocumentBuilder().newDocument();
@@ -105,7 +101,6 @@ public class Handler extends DefaultHandler {
 
         if (_nodeStk.size() == 0) {
             try {
-
                 datum = datumBuilder.createDatum(e);
             } catch (Exception e2) {
                 System.out.println("I say, what seems to be the matter here?");
@@ -118,7 +113,6 @@ public class Handler extends DefaultHandler {
                 e1.printStackTrace();
             }
         }
-
 
     }
 

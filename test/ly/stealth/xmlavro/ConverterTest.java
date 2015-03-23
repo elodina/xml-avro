@@ -194,32 +194,13 @@ public class ConverterTest {
 
     @Test
     public void recordWithWildcardField() {
-        String xsd =
-                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "  <xs:complexType name='type'>" +
-                "    <xs:sequence>" +
-                "      <xs:element name='field' type='xs:string'/>" +
-                "      <xs:any/>" +
-                "    </xs:sequence>" +
-                "  </xs:complexType>" +
-                "  <xs:element name='root' type='type'/>" +
-                "</xs:schema>";
-
-        Schema schema = Converter.createSchema(xsd);
+        Schema schema = Converter.createSchema(TestData.recordWithWildcardField.xsd);
         assertEquals(2, schema.getFields().size());
 
         Schema.Field wildcardField = schema.getField(Source.WILDCARD);
         assertEquals(Schema.Type.MAP, wildcardField.schema().getType());
 
-        // Two wildcard-matched elements
-        String xml =
-                "<root>" +
-                "  <field>field</field>" +
-                "  <field0>field0</field0>" +
-                "  <field1>field1</field1>" +
-                "</root>";
-
-        GenericData.Record record = Converter.createDatum(schema, xml);
+        GenericData.Record record = Converter.createDatum(schema, TestData.recordWithWildcardField.xmlWithTwoWildcard);
         assertEquals("field", record.get("field"));
 
         @SuppressWarnings("unchecked")
@@ -229,9 +210,7 @@ public class ConverterTest {
         assertEquals("field0", map.get("field0"));
         assertEquals("field1", map.get("field1"));
 
-        // No wildcard-matched element
-        xml = "<root><field>field</field></root>";
-        record = Converter.createDatum(schema, xml);
+        record = Converter.createDatum(schema, TestData.recordWithWildcardField.xmlWithNoWildcard);
 
         assertEquals("field", record.get("field"));
         assertEquals(Collections.emptyMap(), record.get(Source.WILDCARD));
@@ -260,19 +239,7 @@ public class ConverterTest {
 
     @Test
     public void optionalElementValues() {
-        String xsd =
-                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
-                "  <xs:element name='root'>" +
-                "    <xs:complexType>" +
-                "      <xs:sequence>" +
-                "        <xs:element name='required' type='xs:string'/>" +
-                "        <xs:element name='optional' type='xs:string' minOccurs='0'/>" +
-                "      </xs:sequence>" +
-                "    </xs:complexType>" +
-                "  </xs:element>" +
-                "</xs:schema>";
-
-        Schema schema = Converter.createSchema(xsd);
+        Schema schema = Converter.createSchema(TestData.optionalElementValues.xsd);
         assertEquals(2, schema.getFields().size());
 
         Schema.Field requiredField = schema.getField("required");
