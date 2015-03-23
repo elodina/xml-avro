@@ -104,14 +104,18 @@ public class SaxTests {
     }
 
     @Test
-    public void severalRootsTwo() {
-        fail("Unimplemented");
-//        Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
-//
-//        String xml = "<r><s>s</s></r>";
-//        GenericData.Record record = Converter.createDatum(schema, xml);
-//        GenericData.Record subRecord = (GenericData.Record) record.get("r");
-//        assertEquals("s", subRecord.get("s"));
+    public void severalRootsTwo() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
+
+        String xml = "<r><s>s</s></r>";
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        JSONObject subObject = (JSONObject) record.get("r");
+        assertEquals("s", subObject.get("s"));
     }
 
     @Test
