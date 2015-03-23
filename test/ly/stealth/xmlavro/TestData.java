@@ -256,6 +256,54 @@ public class TestData {
 
     }
 
+    public class choiceElements {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "  <xs:element name='root'>" +
+                        "    <xs:complexType>" +
+                        "      <xs:choice>" +
+                        "        <xs:element name='s' type='xs:string'/>" +
+                        "        <xs:element name='i' type='xs:int'/>" +
+                        "      </xs:choice>" +
+                        "    </xs:complexType>" +
+                        "  </xs:element>" +
+                        "</xs:schema>";
+
+    }
+
+    public class severalWildcards {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "  <xs:element name='root'>" +
+                        "    <xs:complexType>" +
+                        "      <xs:sequence>" +
+                        "        <xs:any/>" +
+                        "        <xs:any/>" +
+                        "      </xs:sequence>" +
+                        "    </xs:complexType>" +
+                        "  </xs:element>" +
+                        "</xs:schema>";
+
+    }
+
+    public class severalRoots {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "   <xs:element name='i' type='xs:int'/>" +
+                        "   <xs:element name='r'>" +
+                        "     <xs:complexType>" +
+                        "       <xs:sequence>" +
+                        "         <xs:element name='s' type='xs:string'/>" +
+                        "       </xs:sequence>" +
+                        "     </xs:complexType>" +
+                        "   </xs:element>" +
+                        "</xs:schema>";
+
+    }
+
 
 
 

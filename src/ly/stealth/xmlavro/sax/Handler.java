@@ -14,11 +14,14 @@ import javax.xml.parsers.ParserConfigurationException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Stack;
+import java.util.TimeZone;
 import java.util.Vector;
 
 public class Handler extends DefaultHandler {
     private final OutputStream outputStream;
     private final Schema schema;
+
+    private TimeZone timeZone = null;
 
     public static final String EMPTYSTRING = "";
     public static final String XML_PREFIX = "xml";
@@ -35,6 +38,7 @@ public class Handler extends DefaultHandler {
         this.outputStream = outputStream;
         this.schema = schema;
 
+
         final DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         try {
             _document = factory.newDocumentBuilder().newDocument();
@@ -42,6 +46,11 @@ public class Handler extends DefaultHandler {
             e.printStackTrace();
         }
         _root = _document;
+    }
+
+    public Handler withTimeZone(TimeZone timeZone) {
+        this.timeZone = timeZone;
+        return this;
     }
 
     public void startElement(String namespaceURI, String localName, String qualifiedName, Attributes atts) throws SAXException {
@@ -96,7 +105,13 @@ public class Handler extends DefaultHandler {
 
     public void endElement(String namespaceURI, String localName, String qualifiedName) throws SAXException {
         Element e =  _nodeStk.pop();
+
+        if (timeZone != null) {
+            DatumBuilder.setDefaultTimeZone(timeZone);
+        }
+
         DatumBuilder datumBuilder = new DatumBuilder(schema);
+
         Object datum = ""; // TODO: just to get started
 
         if (_nodeStk.size() == 0) {

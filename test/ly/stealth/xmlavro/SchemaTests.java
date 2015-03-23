@@ -1,6 +1,7 @@
 package ly.stealth.xmlavro;
 
 import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
 import org.json.JSONException;
 import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
@@ -116,6 +117,72 @@ public class SchemaTests {
                 "}", schema.toString(), false);
     }
 
+    @Test
+    public void arrayOfUnboundedChoiceElements() {
+        String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "      <xs:choice maxOccurs='unbounded'>" +
+                "        <xs:element name='s' type='xs:string'/>" +
+                "        <xs:element name='i' type='xs:int'/>" +
+                "      </xs:choice>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        Schema schema = Converter.createSchema(xsd);
+        assertEquals(Schema.Type.ARRAY, schema.getType());
+        final Schema elementType = schema.getElementType();
+        assertEquals(Schema.Type.RECORD, elementType.getType());
+    }
+
+    @Test
+    public void choiceElements() {
+        Schema schema = Converter.createSchema(TestData.choiceElements.xsd);
+        assertEquals(Schema.Type.RECORD, schema.getType());
+        assertEquals(2, schema.getFields().size());
+
+        Schema.Field sField = schema.getField("s");
+        assertEquals(Schema.Type.UNION, sField.schema().getType());
+        assertEquals(
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
+                sField.schema().getTypes()
+        );
+
+        Schema.Field iField = schema.getField("i");
+        assertEquals(Schema.Type.UNION, iField.schema().getType());
+        assertEquals(Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.INT)), iField.schema().getTypes());
+    }
+
+    @Test
+    public void severalWildcards() {
+        Schema schema = Converter.createSchema(TestData.severalWildcards.xsd);
+        assertEquals(1, schema.getFields().size());
+
+        Schema.Field field = schema.getField(Source.WILDCARD);
+        assertEquals(null, field.getProp(Source.SOURCE));
+    }
+
+    @Test
+    public void severalRoots() {
+        Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
+        assertEquals(Schema.Type.RECORD, schema.getType());
+        assertTrue("Schema should have a valid name", schema.getName() != null && !schema.getName().isEmpty());
+        assertEquals(Source.DOCUMENT, schema.getProp(Source.SOURCE));
+        assertEquals(2, schema.getFields().size());
+
+        Schema.Field field0 = schema.getFields().get(0);
+        assertEquals("" + new Source("i"), field0.getProp(Source.SOURCE));
+        assertEquals(Schema.Type.UNION, field0.schema().getType());
+        assertEquals(Schema.Type.INT, field0.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.NULL, field0.schema().getTypes().get(0).getType());
+
+        Schema.Field field1 = schema.getFields().get(1);
+        assertEquals("" + new Source("r"), field1.getProp(Source.SOURCE));
+        assertEquals(Schema.Type.UNION, field1.schema().getType());
+        assertEquals(Schema.Type.RECORD, field1.schema().getTypes().get(1).getType());
+        assertEquals(Schema.Type.NULL, field1.schema().getTypes().get(0).getType());
+    }
 
 
 }

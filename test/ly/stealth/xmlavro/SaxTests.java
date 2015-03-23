@@ -2,7 +2,6 @@ package ly.stealth.xmlavro;
 
 import ly.stealth.xmlavro.sax.SaxClient;
 import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -16,6 +15,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
+import java.util.TimeZone;
 
 import static junit.framework.Assert.*;
 
@@ -35,34 +35,83 @@ public class SaxTests {
         inputStream.close();
     }
 
-    @Test
-    public void rootIntPrimitive() {
-        fail("Unimplemented");
+    public String rootPrimitiveWithType(String xmlType, String xmlValue, TimeZone timeZone) throws IOException, SAXException {
+        String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "   <xs:element name='value' type='" + xmlType + "'/>" +
+                        "</xs:schema>";
+
+        Schema schema = Converter.createSchema(xsd);
+
+        String xml = "<value>" + xmlValue + "</value>";
+
+        SaxClient saxClient = new SaxClient().withTimeZone(timeZone);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        return out.toString();
     }
 
     @Test
-    public void rootLongPrimitive() {
-        fail("Unimplemented");
+    public void rootIntPrimitive() throws IOException, SAXException {
+        assertEquals(-1, Integer.parseInt(rootPrimitiveWithType("xs:int", "-1", null).trim()));
+        assertEquals(1, Integer.parseInt(rootPrimitiveWithType("xs:unsignedByte", "1", null).trim()));
+        assertEquals(5, Integer.parseInt(rootPrimitiveWithType("xs:unsignedShort", "5", null).trim()));
     }
 
     @Test
-    public void rootDoublePrimitive() {
-        fail("Unimplemented");
+    public void rootLongPrimitive() throws IOException, SAXException {
+        assertEquals(20, Long.parseLong(rootPrimitiveWithType("xs:long", "20", null).trim()));
+        assertEquals(30, Long.parseLong(rootPrimitiveWithType("xs:unsignedInt", "30", null).trim()));
     }
 
     @Test
-    public void rootUnsignedLongShouldBeKeptAsAvroString() {
-        fail("Unimplemented");
+    public void rootDoublePrimitive() throws IOException, SAXException {
+        assertEquals(999999999.999999999, Double.parseDouble(rootPrimitiveWithType("xs:decimal", "999999999.999999999", null).trim()));
     }
 
     @Test
-    public void rootDateTimePrimitive() {
-        fail("Unimplemented");
+    public void rootUnsignedLongShouldBeKeptAsAvroString() throws IOException, SAXException {
+        assertEquals("18446744073709551615", rootPrimitiveWithType("xs:unsignedLong", "18446744073709551615", null).trim());
     }
 
     @Test
-    public void severalRoots() {
+    public void rootDateTimePrimitive() throws IOException, SAXException {
+        assertEquals(1414681113000L, Long.parseLong(rootPrimitiveWithType("xs:dateTime", "2014-10-30T14:58:33", null).trim()));
+        assertEquals(1410353913000L, Long.parseLong(rootPrimitiveWithType("xs:dateTime", "2014-09-10T12:58:33", null).trim()));
+
+        TimeZone timeZone = TimeZone.getTimeZone("America/Los_Angeles");
+
+        assertEquals(1414681113000L, Long.parseLong(rootPrimitiveWithType("xs:dateTime", "2014-10-30T07:58:33", timeZone).trim()));
+        assertEquals(1410353913000L, Long.parseLong(rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33", timeZone).trim()));
+    }
+
+    @Test
+    public void severalRootsOne() throws IOException, SAXException, JSONException {
         fail("Unimplemented");
+//        Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
+//
+//        String xml = "<i>5</i>";
+//        SaxClient saxClient = new SaxClient();
+//        ByteArrayOutputStream out = new ByteArrayOutputStream();
+//        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+//        saxClient.readStream(schema, inputStream, out);
+//
+//        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+//        assertEquals(JSONObject.NULL, record.get("r"));
+//        assertEquals(5, record.get("i"));
+    }
+
+    @Test
+    public void severalRootsTwo() {
+        fail("Unimplemented");
+//        Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
+//
+//        String xml = "<r><s>s</s></r>";
+//        GenericData.Record record = Converter.createDatum(schema, xml);
+//        GenericData.Record subRecord = (GenericData.Record) record.get("r");
+//        assertEquals("s", subRecord.get("s"));
     }
 
     @Test
@@ -184,11 +233,6 @@ public class SaxTests {
     }
 
     @Test
-    public void severalWildcards() {
-        fail("Unimplemented");
-    }
-
-    @Test
     public void optionalElementValues() throws IOException, SAXException, JSONException {
         Schema schema = Converter.createSchema(TestData.optionalElementValues.xsd);
 
@@ -238,13 +282,30 @@ public class SaxTests {
     }
 
     @Test
-    public void choiceElements() {
-        fail("Unimplemented");
+    public void choiceElementsOne() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.choiceElements.xsd);
+        String xml = "<root><s>s</s></root>";
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals("s", record.get("s"));
     }
 
     @Test
-    public void arrayOfUnboundedChoiceElements() {
-        fail("Unimplemented");
+    public void choiceElementsTwo() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.choiceElements.xsd);
+        String xml = "<root><i>1</i></root>";
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals(1, record.get("i"));
     }
 
     @Test
