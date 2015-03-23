@@ -1,11 +1,9 @@
 package ly.stealth.xmlavro;
 
-import ly.stealth.xmlavro.Converter;
-import ly.stealth.xmlavro.Source;
-import ly.stealth.xmlavro.TestData;
 import ly.stealth.xmlavro.sax.SaxClient;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Test;
@@ -18,7 +16,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
-import java.util.Collections;
 
 import static junit.framework.Assert.*;
 
@@ -37,12 +34,6 @@ public class SaxTests {
 
         inputStream.close();
     }
-
-    @Test
-    public void SchemaBuilder_validName() {
-        fail("Unimplemented");
-    }
-
 
     @Test
     public void rootIntPrimitive() {
@@ -233,11 +224,17 @@ public class SaxTests {
         assertEquals("optional", record.get("optional"));
     }
 
-
-
     @Test
-    public void array() {
-        fail("Unimplemented");
+    public void array() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.array.xsd);
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(TestData.array.xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        assertEquals(new JSONArray(Arrays.asList("1", "2", "3")).toString(), record.get("value").toString());
     }
 
     @Test
@@ -251,13 +248,36 @@ public class SaxTests {
     }
 
     @Test
-    public void arrayOfChoiceElements() {
-        fail("Unimplemented");
+    public void arrayOfChoiceElements() throws IOException, SAXException, JSONException {
+        Schema schema = Converter.createSchema(TestData.arrayOfChoiceElements.xsd);
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(TestData.arrayOfChoiceElements.xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONArray record = (JSONArray) JSONParser.parseJSON(out.toString());
+
+        JSONObject firstRecord = (JSONObject) record.get(0);
+        assertEquals("s", firstRecord.get("s"));
+
+        JSONObject secondRecord = (JSONObject) record.get(1);
+        assertEquals(1, secondRecord.get("i"));
+
+        JSONObject thirdRecord = (JSONObject) record.get(2);
+        assertEquals(2, thirdRecord.get("i"));
     }
 
     @Test
-    public void arrayFromComplexTypeChoiceElements() throws JSONException {
-        fail("Unimplemented");
+    public void arrayFromComplexTypeChoiceElements() throws JSONException, IOException, SAXException {
+        Schema schema = Converter.createSchema(TestData.arrayFromComplexTypeChoiceElements.xsd);
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(TestData.arrayOfChoiceElements.xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        JSONAssert.assertEquals(TestData.arrayFromComplexTypeChoiceElements.datum, out.toString(), false);
     }
 
 

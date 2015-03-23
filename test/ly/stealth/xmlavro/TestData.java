@@ -189,6 +189,73 @@ public class TestData {
 
     }
 
+    public class array {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "  <xs:element name='root'>" +
+                        "    <xs:complexType>" +
+                        "      <xs:sequence>" +
+                        "        <xs:element name='value' type='xs:string' maxOccurs='unbounded'/>" +
+                        "      </xs:sequence>" +
+                        "    </xs:complexType>" +
+                        "  </xs:element>" +
+                        "</xs:schema>";
+
+        public static final String xml = "<root>" +
+                "  <value>1</value>" +
+                "  <value>2</value>" +
+                "  <value>3</value>" +
+                "</root>";
+
+    }
+
+
+    public class arrayOfChoiceElements {
+
+        public static final String xsd =
+                "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                        "  <xs:element name='root'>" +
+                        "    <xs:complexType>" +
+                        "      <xs:choice maxOccurs='3'>" +
+                        "        <xs:element name='s' type='xs:string'/>" +
+                        "        <xs:element name='i' type='xs:int'/>" +
+                        "      </xs:choice>" +
+                        "    </xs:complexType>" +
+                        "  </xs:element>" +
+                        "</xs:schema>";
+
+        public static final String xml = "<root><s>s</s><i>1</i><i>2</i></root>";
+
+    }
+
+    public class arrayFromComplexTypeChoiceElements {
+
+        public static final String xsd = "<xs:schema xmlns:xs='http://www.w3.org/2001/XMLSchema'>" +
+                "  <xs:element name='root'>" +
+                "    <xs:complexType>" +
+                "      <xs:choice maxOccurs='unbounded'>" +
+                "        <xs:element name='s' type='xs:string'/>" +
+                "        <xs:element name='i' type='xs:int'/>" +
+                "      </xs:choice>" +
+                "    </xs:complexType>" +
+                "  </xs:element>" +
+                "</xs:schema>";
+
+        public static final String xml = "<root>" +
+                "<s>s</s>" +
+                "<i>1</i>" +
+                "<i>2</i>" +
+                "</root>";
+
+        public static final String datum = "[" +
+                "{'s': 's'}," +
+                "{'i': 1}," +
+                "{'i': 2}" +
+                "]";
+
+    }
+
 
 
 
