@@ -26,6 +26,7 @@ public class Handler extends DefaultHandler {
     private final Schema schema;
 
     private TimeZone timeZone = null;
+    private int parsingDepth = 0;
 
     public static final String EMPTYSTRING = "";
     public static final String XML_PREFIX = "xml";
@@ -39,6 +40,11 @@ public class Handler extends DefaultHandler {
     private Vector _namespaceDecls = null;
 
     private DataFileWriter dataFileWriter;
+
+    public enum ParsingDepth {
+        ROOT,
+        ROOT_PLUS_ONE
+    }
 
     Handler(Schema schema, OutputStream outputStream) {
         this.outputStream = outputStream;
@@ -66,10 +72,13 @@ public class Handler extends DefaultHandler {
         return this;
     }
 
-//    @Override
-//    public void startDocument() {
-//        //_nodeStk.push(_root.);
-//    }
+    public Handler withParsingDepth(ParsingDepth depth) {
+        if (depth == ParsingDepth.ROOT)
+            parsingDepth = 1;
+        else
+            parsingDepth = 2;
+        return this;
+    }
 
     public void startElement(String namespaceURI, String localName, String qualifiedName, Attributes atts) throws SAXException {
         final Element tmp = _document.createElementNS(namespaceURI, qualifiedName);
@@ -126,8 +135,7 @@ public class Handler extends DefaultHandler {
 
 
     public void endElement(String namespaceURI, String localName, String qualifiedName) throws SAXException {
-        int depthToPopStackAt = 0;
-//        int depthOfStackAtStartOfProcess = _nodeStk.size();
+        int depthOfStackAtStartOfProcess = _nodeStk.size();
         Element recentlyPoppedElement = _nodeStk.pop();
 
         if (timeZone != null) {
@@ -138,13 +146,15 @@ public class Handler extends DefaultHandler {
 
         Object datum = null; // TODO: just to get started
 
-        if (_nodeStk.size() == depthToPopStackAt) {
+        if (depthOfStackAtStartOfProcess == parsingDepth) {
             try {
-                datum = datumBuilder.createDatum( recentlyPoppedElement );
+                if (depthOfStackAtStartOfProcess == 2) {
+                    datum = datumBuilder.createDatum( (Element) _root );
+                    _root.removeChild(recentlyPoppedElement);
+                } else {
+                    datum = datumBuilder.createDatum( recentlyPoppedElement );
 
-//                if (depthOfStackAtStartOfProcess == 1) {
-//                    _root.removeChild(recentlyPoppedElement);
-//                }
+                }
 
             } catch (Exception e2) {
                 System.out.println("I say, what seems to be the matter here?");

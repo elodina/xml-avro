@@ -1,12 +1,12 @@
 package ly.stealth.xmlavro;
 
+import ly.stealth.xmlavro.sax.Handler;
 import ly.stealth.xmlavro.sax.SaxClient;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
-import org.apache.avro.io.DatumReader;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -19,9 +19,7 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.TimeZone;
 
 import static junit.framework.Assert.*;
@@ -308,6 +306,34 @@ public class SaxTests {
 
         GenericData.Record record =  (GenericData.Record) fileReader1.next();
         assertEquals(Arrays.asList("1", "2", "3").toString(), record.get("value").toString());
+    }
+
+    @Test
+    public void multiLevelParsingTest() throws Exception {
+        Schema schema = Converter.createSchema(TestData.multiLevelParsingTest.xsd);
+
+        SaxClient saxClient = new SaxClient().withParsingDepth(Handler.ParsingDepth.ROOT_PLUS_ONE);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new ByteArrayInputStream(TestData.multiLevelParsingTest.xml.getBytes());
+        saxClient.readStream(schema, inputStream, out);
+
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader1 = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+
+        GenericData.Array record =  (GenericData.Array) fileReader1.next();
+
+        GenericData.Record firstRecord = (GenericData.Record) record.get(0);
+        assertEquals("s", firstRecord.get("s").toString());
+
+        record = (GenericData.Array) fileReader1.next();
+        GenericData.Record secondRecord = (GenericData.Record) record.get(0);
+        assertEquals(1, secondRecord.get("i"));
+
+        record = (GenericData.Array) fileReader1.next();
+        GenericData.Record thirdRecord = (GenericData.Record) record.get(0);
+        assertEquals(2, thirdRecord.get("i"));
+
+        assertFalse(fileReader1.hasNext());
     }
 
     @Test
