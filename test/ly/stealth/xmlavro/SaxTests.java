@@ -474,11 +474,14 @@ public class SaxTests {
         byte[] expected = Files.readAllBytes(Paths.get("xml/sax/largeFile.avro"));
         String avro = new String(expected, Charset.defaultCharset());
 
+        out.flush();
+        out.close();
+
         GenericDatumReader datumReader = new GenericDatumReader();
         org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
-        Object record =  fileReader.next();
+        Object record = fileReader.next();
 
-        assertEquals(avro.trim(), record.toString().trim());
+        assertEquals(avro.length(), record.toString().length());
     }
 
 

@@ -3,7 +3,6 @@ package ly.stealth.xmlavro.sax;
 import ly.stealth.xmlavro.DatumBuilder;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileWriter;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumWriter;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -14,12 +13,10 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Stack;
 import java.util.TimeZone;
-import java.util.Vector;
 
 public class Handler extends DefaultHandler {
     private final OutputStream outputStream;
@@ -28,16 +25,9 @@ public class Handler extends DefaultHandler {
     private TimeZone timeZone = null;
     private int parsingDepth = 0;
 
-    public static final String EMPTYSTRING = "";
-    public static final String XML_PREFIX = "xml";
-    public static final String XMLNS_PREFIX = "xmlns";
-    public static final String XMLNS_STRING = "xmlns:";
-    public static final String XMLNS_URI = "http://www.w3.org/2000/xmlns/";
-
     private Node _root = null;
     private Document _document = null;
     private Stack<Element> _nodeStk = new Stack<>();
-    private Vector _namespaceDecls = null;
 
     private DataFileWriter dataFileWriter;
 
@@ -61,7 +51,7 @@ public class Handler extends DefaultHandler {
 
         dataFileWriter = new DataFileWriter(new GenericDatumWriter(schema));
         try {
-            dataFileWriter.create(schema, outputStream);  //appendTo(new File("xml/sax/foo.txt"));
+            dataFileWriter.create(schema, outputStream);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -83,40 +73,14 @@ public class Handler extends DefaultHandler {
     public void startElement(String namespaceURI, String localName, String qualifiedName, Attributes atts) throws SAXException {
         final Element tmp = _document.createElementNS(namespaceURI, qualifiedName);
 
-        // Add namespace declarations first
-        if (_namespaceDecls != null)
-        {
-            final int nDecls = _namespaceDecls.size();
-            for (int i = 0; i < nDecls; i++)
-            {
-                final String prefix = (String) _namespaceDecls.elementAt(i++);
-
-                if (prefix == null || prefix.equals(EMPTYSTRING))
-                {
-                    tmp.setAttributeNS(XMLNS_URI, XMLNS_PREFIX,
-                            (String) _namespaceDecls.elementAt(i));
-                }
-                else
-                {
-                    tmp.setAttributeNS(XMLNS_URI, XMLNS_STRING + prefix,
-                            (String) _namespaceDecls.elementAt(i));
-                }
-            }
-            _namespaceDecls.clear();
-        }
-
         // Add attributes to element
         final int nattrs = atts.getLength();
         for (int i = 0; i < nattrs; i++)
         {
-            if (atts.getLocalName(i) == null)
-            {
+            if (atts.getLocalName(i) == null) {
                 tmp.setAttribute(atts.getQName(i), atts.getValue(i));
-            }
-            else
-            {
-                tmp.setAttributeNS(atts.getURI(i), atts.getQName(i),
-                        atts.getValue(i));
+            } else {
+                tmp.setAttributeNS(atts.getURI(i), atts.getQName(i), atts.getValue(i));
             }
         }
 
@@ -128,6 +92,7 @@ public class Handler extends DefaultHandler {
             _root = tmp;
             _document.appendChild(tmp);
         }
+
         // Push this node onto stack
         _nodeStk.push(tmp);
     }
@@ -142,46 +107,60 @@ public class Handler extends DefaultHandler {
             DatumBuilder.setDefaultTimeZone(timeZone);
         }
 
-        DatumBuilder datumBuilder = new DatumBuilder(schema);
-
-        Object datum = null; // TODO: just to get started
-
         if (depthOfStackAtStartOfProcess == parsingDepth) {
-            try {
-                if (depthOfStackAtStartOfProcess == 2) {
-                    datum = datumBuilder.createDatum( (Element) _root );
-                    _root.removeChild(recentlyPoppedElement);
-                } else {
-                    datum = datumBuilder.createDatum( recentlyPoppedElement );
-
-                }
-
-            } catch (Exception e2) {
-                System.out.println("I say, what seems to be the matter here?");
-                e2.printStackTrace();
+            DatumBuilder datumBuilder = new DatumBuilder(schema);
+            Object datum;
+            if (depthOfStackAtStartOfProcess == 2) {
+                datum = datumBuilder.createDatum( (Element) _root );
+                _root.removeChild(recentlyPoppedElement);
+            } else {
+                datum = datumBuilder.createDatum( recentlyPoppedElement );
             }
 
-
             try {
-                //outputStream.write((datum.toString() + "\n").getBytes());
                 dataFileWriter.append(datum);
-            } catch (IOException e1) {
-                e1.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Encountered problem writing the datum to the output stream: '" + e.getMessage() + "'");
+            } finally {
+
             }
-
-
         }
+    }
 
+    private void closeStuff() {
+        try {
+            dataFileWriter.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Encountered problem flushing data file writer: '" + e.getMessage() + "'");
+        } finally {
+            try {
+                dataFileWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+                throw new RuntimeException("Encountered problem closing data file writer: '" + e.getMessage() + "'");
+            } finally {
+                try {
+                    outputStream.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("Encountered problem flushing output stream: '" + e.getMessage() + "'");
+                } finally {
+                    try {
+                        outputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                        throw new RuntimeException("Encountered problem closing output stream: '" + e.getMessage() + "'");
+                    }
+                }
+            }
+        }
     }
 
     public void endDocument () throws SAXException
     {
-        try {
-            dataFileWriter.flush();
-            dataFileWriter.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        closeStuff();
     }
 
     public void characters(char[] ch, int start, int length) {
