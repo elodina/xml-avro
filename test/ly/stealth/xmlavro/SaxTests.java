@@ -7,12 +7,10 @@ import org.apache.avro.file.DataFileReader;
 import org.apache.avro.file.SeekableByteArrayInput;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericDatumReader;
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Test;
 import org.skyscreamer.jsonassert.JSONAssert;
-import org.skyscreamer.jsonassert.JSONParser;
 import org.xml.sax.SAXException;
 
 import java.io.*;
@@ -35,7 +33,11 @@ public class SaxTests {
 
         saxClient.readStream(schema, inputStream, out);
 
-        JSONAssert.assertEquals(TestData.arrayFromComplexTypeSequenceOfChoiceElements.datum, out.toString(), false);
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        Object record =  fileReader.next();
+
+        JSONAssert.assertEquals(TestData.arrayFromComplexTypeSequenceOfChoiceElements.datum, record.toString(), false);
 
         inputStream.close();
     }
@@ -55,7 +57,11 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        return out.toString();
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+
+        Object record =  fileReader.next();
+        return record.toString().trim();
     }
 
     @Test
@@ -96,7 +102,6 @@ public class SaxTests {
 
     @Test
     public void severalRootsOne() throws IOException, SAXException, JSONException {
-//        fail("Unimplemented");
         Schema schema = Converter.createSchema(TestData.severalRoots.xsd);
 
         String xml = "<i>5</i>";
@@ -105,7 +110,10 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
+
         assertEquals(JSONObject.NULL, record.get("r"));
         assertEquals(5, record.get("i"));
     }
@@ -120,9 +128,12 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-        JSONObject subObject = (JSONObject) record.get("r");
-        assertEquals("s", subObject.get("s"));
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
+
+        GenericData.Record subObject = (GenericData.Record) record.get("r");
+        assertEquals("s", subObject.get("s").toString());
     }
 
     @Test
@@ -133,9 +144,12 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.rootRecord.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
+
         assertEquals(1, record.get("i"));
-        assertEquals("s", record.get("s"));
+        assertEquals("s", record.get("s").toString());
         assertEquals(1.0, record.get("d"));
         inputStream.close();
     }
@@ -153,7 +167,11 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.nestedRecursiveRecords.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONAssert.assertEquals(TestData.nestedRecursiveRecords.datum, out.toString(), false);
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
+
+        JSONAssert.assertEquals(TestData.nestedRecursiveRecords.datum, record.toString(), false);
     }
 
     @Test
@@ -178,22 +196,43 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-        assertEquals("required", record.get("required"));
-        assertEquals("optional", record.get("optional"));
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
 
-        inputStream.close();
-        out.close();
+        assertEquals("required", record.get("required").toString());
+        assertEquals("optional", record.get("optional").toString());
+    }
 
-        xml = "<root required='required'/>";
-        inputStream = new ByteArrayInputStream(xml.getBytes());
-        out = new ByteArrayOutputStream();
+    @Test
+    public void attributesTwo() throws JSONException, IOException, SAXException {
+        Schema schema = Converter.createSchema(TestData.attributes.xsd);
+
+        Schema.Field required = schema.getField("required");
+        assertEquals(Schema.Type.STRING, required.schema().getType());
+
+        assertNull(schema.getField("prohibited"));
+
+        Schema.Field optional = schema.getField("optional");
+        assertEquals(Schema.Type.UNION, optional.schema().getType());
+        assertEquals(
+                Arrays.asList(Schema.create(Schema.Type.NULL), Schema.create(Schema.Type.STRING)),
+                optional.schema().getTypes()
+        );
+
+
+        SaxClient saxClient = new SaxClient();
+        String xml = "<root required='required'/>";
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(xml.getBytes());
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
         saxClient.readStream(schema, inputStream, out);
 
-        record = (JSONObject) JSONParser.parseJSON(out.toString());
-        assertEquals("required", record.get("required"));
-        assertEquals(record.get("optional"), JSONObject.NULL);
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
 
+        assertEquals("required", record.get("required").toString());
+        assertEquals(record.get("optional"), null);
 
     }
 
@@ -206,9 +245,12 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.uniqueFieldNames.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-        assertEquals("value", record.get("field"));
-        assertEquals("value0", record.get("field0"));
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
+
+        assertEquals("value", record.get("field").toString());
+        assertEquals("value0", record.get("field0").toString());
     }
 
     @Test
@@ -224,16 +266,20 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.recordWithWildcardField.xmlWithTwoWildcard.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-        assertEquals("field", record.get("field"));
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
 
+        assertEquals("field", record.get("field").toString());
 
         @SuppressWarnings("unchecked")
-        JSONObject map = (JSONObject) record.get(Source.WILDCARD);
+        java.util.Map<String, String> map = (java.util.Map<String, String>) record.get(Source.WILDCARD);
 
-        assertEquals(2, map.length());
-        assertEquals("field0", map.get("field0"));
-        assertEquals("field1", map.get("field1"));
+        assertEquals(2, map.size());
+        assertEquals(map.keySet().toArray()[0].toString(), "field1".toString());
+        assertEquals(map.values().toArray()[0].toString(),"field1".toString());
+        assertEquals(map.keySet().toArray()[1].toString(), "field0".toString());
+        assertEquals(map.values().toArray()[1].toString(), "field0".toString());
     }
 
     @Test
@@ -249,9 +295,11 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.recordWithWildcardField.xmlWithNoWildcard.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
 
-        assertEquals("field", record.get("field"));
+        assertEquals("field", record.get("field").toString());
         assertEquals(new JSONObject().toString(), record.get(Source.WILDCARD).toString());
     }
 
@@ -266,10 +314,12 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
 
-        assertEquals("required", record.get("required"));
-        assertEquals(record.get("optional"), JSONObject.NULL);
+        assertEquals("required", record.get("required").toString());
+        assertEquals(record.get("optional"), null);
     }
 
     @Test
@@ -286,9 +336,11 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
 
-        assertEquals("optional", record.get("optional"));
+        assertEquals("optional", record.get("optional").toString());
     }
 
     @Test
@@ -302,7 +354,6 @@ public class SaxTests {
 
         GenericDatumReader datumReader = new GenericDatumReader();
         org.apache.avro.file.FileReader fileReader1 = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
-        fileReader1.hasNext();
 
         GenericData.Record record =  (GenericData.Record) fileReader1.next();
         assertEquals(Arrays.asList("1", "2", "3").toString(), record.get("value").toString());
@@ -346,8 +397,11 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-        assertEquals("s", record.get("s"));
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
+
+        assertEquals("s", record.get("s").toString());
     }
 
     @Test
@@ -359,7 +413,10 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Record record =  (GenericData.Record) fileReader.next();
+
         assertEquals(1, record.get("i"));
     }
 
@@ -372,15 +429,17 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.arrayOfChoiceElements.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONArray record = (JSONArray) JSONParser.parseJSON(out.toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        GenericData.Array record =  (GenericData.Array) fileReader.next();
 
-        JSONObject firstRecord = (JSONObject) record.get(0);
-        assertEquals("s", firstRecord.get("s"));
+        GenericData.Record firstRecord = (GenericData.Record) record.get(0);
+        assertEquals("s", firstRecord.get("s").toString());
 
-        JSONObject secondRecord = (JSONObject) record.get(1);
+        GenericData.Record secondRecord = (GenericData.Record) record.get(1);
         assertEquals(1, secondRecord.get("i"));
 
-        JSONObject thirdRecord = (JSONObject) record.get(2);
+        GenericData.Record thirdRecord = (GenericData.Record) record.get(2);
         assertEquals(2, thirdRecord.get("i"));
     }
 
@@ -393,7 +452,11 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.arrayOfChoiceElements.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONAssert.assertEquals(TestData.arrayFromComplexTypeChoiceElements.datum, out.toString(), false);
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        Object record =  fileReader.next();
+
+        JSONAssert.assertEquals(TestData.arrayFromComplexTypeChoiceElements.datum, record.toString(), false);
     }
 
     @Test
@@ -411,7 +474,11 @@ public class SaxTests {
         byte[] expected = Files.readAllBytes(Paths.get("xml/sax/largeFile.avro"));
         String avro = new String(expected, Charset.defaultCharset());
 
-        assertEquals(avro.trim(), out.toString().trim());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        Object record =  fileReader.next();
+
+        assertEquals(avro.trim(), record.toString().trim());
     }
 
 
