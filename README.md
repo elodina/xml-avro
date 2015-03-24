@@ -44,11 +44,13 @@ GenericData.Record record = Converter.createDatum(schema, yourXml);
 
 Lets imagine you are loading a several gigabyte xml file... loading into memory is not an option. This solution will allow you to stream the contents, for example imagine an xml structure
 
+```
 root
   item
   item
     sub-item
   item
+```  
 
 In its current form the sax parser allows (schema permitting) the user to stream through the file and only load each "item" into memory one at a time and write its value to an output stream. More complex usages may come in the future if the demand is there... 
 
