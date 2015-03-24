@@ -42,14 +42,22 @@ GenericData.Record record = Converter.createDatum(schema, yourXml);
 ```
 ### Sax Parsing
 
-Note that not all schemas will support streaming yet, but an example is
+Lets imagine you are loading a several gigabyte xml file... loading into memory is not an option. This solution will allow you to stream the contents, for example imagine an xml structure
+
+root
+  item
+  item
+    sub-item
+  item
+
+In its current form the sax parser allows (schema permitting) the user to stream through the file and only load each "item" into memory one at a time and write its value to an output stream. More complex usages may come in the future if the demand is there... 
 
 ```java
 Schema schema = Converter.createSchema(TestData.multiLevelParsingTest.xsd);
 
 SaxClient saxClient = new SaxClient().withParsingDepth(Handler.ParsingDepth.ROOT_PLUS_ONE);
 ByteArrayOutputStream out = new ByteArrayOutputStream();
-InputStream inputStream = new ByteArrayInputStream(TestData.multiLevelParsingTest.xml.getBytes());
+InputStream inputStream = new ByteArrayInputStream(xmlFile.getBytes());
 saxClient.readStream(schema, inputStream, out);
 
 GenericDatumReader datumReader = new GenericDatumReader();
