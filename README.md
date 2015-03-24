@@ -30,3 +30,39 @@ Usage:
 {avro|xml} <inFile> <outFile>
 ```
 Note: simple converter uses predefined general avro schema located at src/ly/stealth/xmlavro/simple/xml.avsc
+
+## In code usage
+
+There are two ways to generate an avro representation from XML, using Dom based parsing and using Sax based parsing. Dom parsing is fine for small documents but loads the entire file into memory. Sax parsing allows for you to stream over the contents of a large file and stream the result to an output stream.
+
+### Dom Parsing
+```java
+Schema schema = Converter.createSchema(yourXsd);
+GenericData.Record record = Converter.createDatum(schema, yourXml);
+```
+### Sax Parsing
+
+Note that not all schemas will support streaming yet, but an example is
+
+```java
+Schema schema = Converter.createSchema(TestData.multiLevelParsingTest.xsd);
+
+SaxClient saxClient = new SaxClient().withParsingDepth(Handler.ParsingDepth.ROOT_PLUS_ONE);
+ByteArrayOutputStream out = new ByteArrayOutputStream();
+InputStream inputStream = new ByteArrayInputStream(TestData.multiLevelParsingTest.xml.getBytes());
+saxClient.readStream(schema, inputStream, out);
+
+GenericDatumReader datumReader = new GenericDatumReader();
+org.apache.avro.file.FileReader fileReader1 = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+
+// obviously in the real world you would iterate over the items but as an example
+GenericData.Array record =  (GenericData.Array) fileReader1.next();
+GenericData.Record firstRecord = (GenericData.Record) record.get(0);
+
+record = (GenericData.Array) fileReader1.next();
+GenericData.Record secondRecord = (GenericData.Record) record.get(0);
+```
+
+
+
+
