@@ -1,6 +1,6 @@
 package ly.stealth.xmlavro;
 
-import ly.stealth.xmlavro.sax.Handler;
+import ly.stealth.xmlavro.sax.AvroSaxHandler;
 import ly.stealth.xmlavro.sax.SaxClient;
 import org.apache.avro.Schema;
 import org.apache.avro.file.DataFileReader;
@@ -363,7 +363,7 @@ public class SaxTests {
     public void multiLevelParsingTest() throws Exception {
         Schema schema = Converter.createSchema(TestData.multiLevelParsingTest.xsd);
 
-        SaxClient saxClient = new SaxClient().withParsingDepth(Handler.ParsingDepth.ROOT_PLUS_ONE);
+        SaxClient saxClient = new SaxClient().withParsingDepth(AvroSaxHandler.ParsingDepth.ROOT_PLUS_ONE);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         InputStream inputStream = new ByteArrayInputStream(TestData.multiLevelParsingTest.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);

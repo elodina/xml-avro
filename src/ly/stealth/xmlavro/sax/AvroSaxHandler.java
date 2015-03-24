@@ -18,7 +18,10 @@ import java.io.OutputStream;
 import java.util.Stack;
 import java.util.TimeZone;
 
-public class Handler extends DefaultHandler {
+/**
+ * Custom Sax parser that can read in xml from an input stream and output Avro files to an output stream
+ */
+public class AvroSaxHandler extends DefaultHandler {
     private final OutputStream outputStream;
     private final Schema schema;
 
@@ -32,11 +35,23 @@ public class Handler extends DefaultHandler {
     private DataFileWriter dataFileWriter;
 
     public enum ParsingDepth {
+        /**
+         * Parses the whole file in one go: i.e. the user does not get any advantage over loading whole dom
+         */
         ROOT,
+        /**
+         * Iterates over elements indented under the root node. This is where this handler provides value to the caller
+         */
         ROOT_PLUS_ONE
     }
 
-    Handler(Schema schema, OutputStream outputStream) {
+    /**
+     * @param schema
+     * The schema of the XML file to be fed into the system
+     * @param outputStream
+     * The output stread to push generated Avro to
+     */
+    AvroSaxHandler(Schema schema, OutputStream outputStream) {
         this.outputStream = outputStream;
         this.schema = schema;
 
@@ -57,12 +72,24 @@ public class Handler extends DefaultHandler {
         }
     }
 
-    public Handler withTimeZone(TimeZone timeZone) {
+    /**
+     * @param timeZone
+     * The timezone to use for generating avro
+     * @return
+     * The self instance (builder pattern)
+     */
+    public AvroSaxHandler withTimeZone(TimeZone timeZone) {
         this.timeZone = timeZone;
         return this;
     }
 
-    public Handler withParsingDepth(ParsingDepth depth) {
+    /**
+     * @param depth
+     * Whether to read the whole DOM or to read indented elements individually to avoid running out of memory
+     * @return
+     * The self instance (builder pattern)
+     */
+    public AvroSaxHandler withParsingDepth(ParsingDepth depth) {
         if (depth == ParsingDepth.ROOT)
             parsingDepth = 1;
         else
@@ -97,8 +124,6 @@ public class Handler extends DefaultHandler {
         _nodeStk.push(tmp);
     }
 
-
-
     public void endElement(String namespaceURI, String localName, String qualifiedName) throws SAXException {
         int depthOfStackAtStartOfProcess = _nodeStk.size();
         Element recentlyPoppedElement = _nodeStk.pop();
@@ -128,7 +153,7 @@ public class Handler extends DefaultHandler {
         }
     }
 
-    private void closeStuff() {
+    private void closeOutputStreams() {
         try {
             dataFileWriter.flush();
         } catch (IOException e) {
@@ -158,9 +183,8 @@ public class Handler extends DefaultHandler {
         }
     }
 
-    public void endDocument () throws SAXException
-    {
-        closeStuff();
+    public void endDocument () throws SAXException {
+        closeOutputStreams();
     }
 
     public void characters(char[] ch, int start, int length) {
