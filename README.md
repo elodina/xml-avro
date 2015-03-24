@@ -57,7 +57,7 @@ In its current form the sax parser allows (schema permitting) the user to stream
 ```java
 Schema schema = Converter.createSchema(TestData.multiLevelParsingTest.xsd);
 
-SaxClient saxClient = new SaxClient().withParsingDepth(Handler.ParsingDepth.ROOT_PLUS_ONE);
+SaxClient saxClient = new SaxClient().withParsingDepth(AvroSaxHandler.ParsingDepth.ROOT_PLUS_ONE);
 ByteArrayOutputStream out = new ByteArrayOutputStream();
 InputStream inputStream = new ByteArrayInputStream(xmlFile.getBytes());
 saxClient.readStream(schema, inputStream, out);
