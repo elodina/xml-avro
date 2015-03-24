@@ -2,6 +2,11 @@ package ly.stealth.xmlavro;
 
 import ly.stealth.xmlavro.sax.SaxClient;
 import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileReader;
+import org.apache.avro.file.SeekableByteArrayInput;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumReader;
+import org.apache.avro.io.DatumReader;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -10,11 +15,13 @@ import org.skyscreamer.jsonassert.JSONAssert;
 import org.skyscreamer.jsonassert.JSONParser;
 import org.xml.sax.SAXException;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.TimeZone;
 
 import static junit.framework.Assert.*;
@@ -287,7 +294,7 @@ public class SaxTests {
     }
 
     @Test
-    public void array() throws IOException, SAXException, JSONException {
+    public void array() throws Exception {
         Schema schema = Converter.createSchema(TestData.array.xsd);
 
         SaxClient saxClient = new SaxClient();
@@ -295,8 +302,12 @@ public class SaxTests {
         InputStream inputStream = new ByteArrayInputStream(TestData.array.xml.getBytes());
         saxClient.readStream(schema, inputStream, out);
 
-        JSONObject record = (JSONObject) JSONParser.parseJSON(out.toString());
-        assertEquals(new JSONArray(Arrays.asList("1", "2", "3")).toString(), record.get("value").toString());
+        GenericDatumReader datumReader = new GenericDatumReader();
+        org.apache.avro.file.FileReader fileReader1 = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+        fileReader1.hasNext();
+
+        GenericData.Record record =  (GenericData.Record) fileReader1.next();
+        assertEquals(Arrays.asList("1", "2", "3").toString(), record.get("value").toString());
     }
 
     @Test
@@ -358,6 +369,26 @@ public class SaxTests {
 
         JSONAssert.assertEquals(TestData.arrayFromComplexTypeChoiceElements.datum, out.toString(), false);
     }
+
+    @Test
+    public void largeFile() throws JSONException, IOException, SAXException {
+        byte[] encoded = Files.readAllBytes(Paths.get("xml/sax/largeFile.xsd"));
+        String xsd = new String(encoded, Charset.defaultCharset());
+
+        Schema schema = Converter.createSchema(xsd);
+
+        SaxClient saxClient = new SaxClient();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        InputStream inputStream = new FileInputStream(new File("xml/sax/largeFile.xml"));
+        saxClient.readStream(schema, inputStream, out);
+
+        byte[] expected = Files.readAllBytes(Paths.get("xml/sax/largeFile.avro"));
+        String avro = new String(expected, Charset.defaultCharset());
+
+        assertEquals(avro.trim(), out.toString().trim());
+    }
+
+
 
 
 }

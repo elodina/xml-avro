@@ -90,11 +90,6 @@ public class DatumBuilder {
         return (T) createNodeDatum(schema, el, false);
     }
 
-//    @SuppressWarnings("unchecked")
-//    public <T> T createDatumSetRecord(Element el) {
-//        return (T) createNodeDatum(schema, el, true);
-//    }
-
     private Object createNodeDatum(Schema schema, Node source, boolean setRecordFromNode) {
         if (!Arrays.asList(Node.ELEMENT_NODE, Node.ATTRIBUTE_NODE).contains(source.getNodeType()))
             throw new IllegalArgumentException("Unsupported node type " + source.getNodeType());

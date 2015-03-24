@@ -2,6 +2,9 @@ package ly.stealth.xmlavro.sax;
 
 import ly.stealth.xmlavro.DatumBuilder;
 import org.apache.avro.Schema;
+import org.apache.avro.file.DataFileWriter;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericDatumWriter;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -11,6 +14,7 @@ import org.xml.sax.helpers.DefaultHandler;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.util.Stack;
@@ -34,6 +38,8 @@ public class Handler extends DefaultHandler {
     private Stack<Element> _nodeStk = new Stack<>();
     private Vector _namespaceDecls = null;
 
+    private DataFileWriter dataFileWriter;
+
     Handler(Schema schema, OutputStream outputStream) {
         this.outputStream = outputStream;
         this.schema = schema;
@@ -46,6 +52,13 @@ public class Handler extends DefaultHandler {
             e.printStackTrace();
         }
         _root = _document;
+
+        dataFileWriter = new DataFileWriter(new GenericDatumWriter(schema));
+        try {
+            dataFileWriter.create(schema, outputStream);  //appendTo(new File("xml/sax/foo.txt"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public Handler withTimeZone(TimeZone timeZone) {
@@ -103,14 +116,19 @@ public class Handler extends DefaultHandler {
             Node last = _nodeStk.peek();
             last.appendChild(tmp);
         } else {
+            _root = tmp;
             _document.appendChild(tmp);
         }
         // Push this node onto stack
         _nodeStk.push(tmp);
     }
 
+
+
     public void endElement(String namespaceURI, String localName, String qualifiedName) throws SAXException {
-        Element e =  _nodeStk.pop();
+        int depthToPopStackAt = 0;
+//        int depthOfStackAtStartOfProcess = _nodeStk.size();
+        Element recentlyPoppedElement = _nodeStk.pop();
 
         if (timeZone != null) {
             DatumBuilder.setDefaultTimeZone(timeZone);
@@ -118,23 +136,42 @@ public class Handler extends DefaultHandler {
 
         DatumBuilder datumBuilder = new DatumBuilder(schema);
 
-        Object datum = ""; // TODO: just to get started
+        Object datum = null; // TODO: just to get started
 
-        if (_nodeStk.size() == 0) {
+        if (_nodeStk.size() == depthToPopStackAt) {
             try {
-                datum = datumBuilder.createDatum(e);
+                datum = datumBuilder.createDatum( recentlyPoppedElement );
+
+//                if (depthOfStackAtStartOfProcess == 1) {
+//                    _root.removeChild(recentlyPoppedElement);
+//                }
+
             } catch (Exception e2) {
                 System.out.println("I say, what seems to be the matter here?");
                 e2.printStackTrace();
             }
 
+
             try {
-                outputStream.write((datum.toString() + "\n").getBytes());
+                //outputStream.write((datum.toString() + "\n").getBytes());
+                dataFileWriter.append(datum);
             } catch (IOException e1) {
                 e1.printStackTrace();
             }
+
+
         }
 
+    }
+
+    public void endDocument () throws SAXException
+    {
+        try {
+            dataFileWriter.flush();
+            dataFileWriter.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public void characters(char[] ch, int start, int length) {
