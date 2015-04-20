@@ -30,3 +30,49 @@ Usage:
 {avro|xml} <inFile> <outFile>
 ```
 Note: simple converter uses predefined general avro schema located at src/ly/stealth/xmlavro/simple/xml.avsc
+
+## In code usage
+
+There are two ways to generate an avro representation from XML, using Dom based parsing and using Sax based parsing. Dom parsing is fine for small documents but loads the entire file into memory. Sax parsing allows for you to stream over the contents of a large file and stream the result to an output stream.
+
+### Dom Parsing
+```java
+Schema schema = Converter.createSchema(yourXsd);
+GenericData.Record record = Converter.createDatum(schema, yourXml);
+```
+### Sax Parsing
+
+Lets imagine you are loading a several gigabyte xml file... loading into memory is not an option. This solution will allow you to stream the contents, for example imagine an xml structure
+
+```
+root
+  item
+  item
+    sub-item
+  item
+```  
+
+In its current form the sax parser allows (schema permitting) the user to stream through the file and only load each "item" into memory one at a time and write its value to an output stream. More complex usages may come in the future if the demand is there... 
+
+```java
+Schema schema = Converter.createSchema(TestData.multiLevelParsingTest.xsd);
+
+SaxClient saxClient = new SaxClient().withParsingDepth(AvroSaxHandler.ParsingDepth.ROOT_PLUS_ONE);
+ByteArrayOutputStream out = new ByteArrayOutputStream();
+InputStream inputStream = new ByteArrayInputStream(xmlFile.getBytes());
+saxClient.readStream(schema, inputStream, out);
+
+GenericDatumReader datumReader = new GenericDatumReader();
+org.apache.avro.file.FileReader fileReader1 = DataFileReader.openReader(new SeekableByteArrayInput(out.toByteArray()), datumReader);
+
+// obviously in the real world you would iterate over the items but as an example
+GenericData.Array record =  (GenericData.Array) fileReader1.next();
+GenericData.Record firstRecord = (GenericData.Record) record.get(0);
+
+record = (GenericData.Array) fileReader1.next();
+GenericData.Record secondRecord = (GenericData.Record) record.get(0);
+```
+
+
+
+
