@@ -1,4 +1,4 @@
-package ly.stealth.xmlavro;
+package net.elodina.xmlavro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;

@@ -8,8 +8,8 @@ Additionally it includes simple schemaless converter that converts xml to avro a
 1. git clone;
 2. mvn package;
 3. java -jar target/xml-avro*.jar <xsdFile> <xmlFile> {<avscFile>} {<avroFile>} // converts specified xml+xsd to avro+asvc files
-4. java -cp target/xml-avro*.jar ly.stealth.xmlavro.simple.Converter avro <xmlFile> <avroFile> // convert xml to avro
-5. java -cp target/xml-avro*.jar ly.stealth.xmlavro.simple.Converter xml <avroFile> <xmlFile> // convert avro to xml
+4. java -cp target/xml-avro*.jar net.elodina.xmlavro.simple.Converter avro <xmlFile> <avroFile> // convert xml to avro
+5. java -cp target/xml-avro*.jar net.elodina.xmlavro.simple.Converter xml <avroFile> <xmlFile> // convert avro to xml
 
 ## Schema-based converter
 Usage:

@@ -1,5 +1,5 @@
 {
-  "namespace": "ly.stealth.xmlavro",
+  "namespace": "net.elodina.xmlavro",
   "protocol": "xml",
 
   "types": [
