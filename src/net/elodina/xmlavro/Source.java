@@ -1,4 +1,4 @@
-package ly.stealth.xmlavro;
+package net.elodina.xmlavro;
 
 import java.util.Objects;
 

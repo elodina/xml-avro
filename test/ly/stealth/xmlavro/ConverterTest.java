@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package ly.stealth.xmlavro;
+package net.elodina.xmlavro;
 
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericData;

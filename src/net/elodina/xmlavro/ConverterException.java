@@ -1,4 +1,4 @@
-package ly.stealth.xmlavro;
+package net.elodina.xmlavro;
 
 public class ConverterException extends RuntimeException {
     public ConverterException(String message) { super(message); }
