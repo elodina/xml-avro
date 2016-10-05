@@ -127,9 +127,7 @@ public class Converter {
 
 		private static File replaceBaseDir(String path, File baseDir) {
 			File file = new File(path);
-			// Change Working directory to the base directory
-			System.setProperty("user.dir", baseDir.getAbsolutePath());
-			
+
 			if (baseDir == null || file.isAbsolute())
 				return file;
 			return new File(baseDir, file.getPath());
@@ -141,6 +139,8 @@ public class Converter {
 
 		private BaseDirResolver(File baseDir) {
 			this.baseDir = baseDir;
+			// Change Working directory to the base directory
+			System.setProperty("user.dir", baseDir.getAbsolutePath());
 		}
 
 		public InputStream getStream(String systemId) {
