@@ -16,17 +16,22 @@
  */
 package net.elodina.xmlavro;
 
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
-import org.json.JSONException;
-import org.junit.Test;
-import org.skyscreamer.jsonassert.JSONAssert;
+import static junit.framework.Assert.assertEquals;
+import static junit.framework.Assert.assertNotNull;
+import static junit.framework.Assert.assertNull;
+import static junit.framework.Assert.assertSame;
+import static junit.framework.Assert.assertTrue;
+import static junit.framework.Assert.fail;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.TimeZone;
 
-import static junit.framework.Assert.*;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.json.JSONException;
+import org.junit.Test;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 public class ConverterTest {
     @Test
@@ -486,7 +491,8 @@ public class ConverterTest {
       assertEquals(2, elementType.getFields().size());
 
       String xml = "<root><s>s</s><i>1</i><i>2</i></root>";
-      GenericData.Array record = Converter.createDatum(schema, xml);
+      @SuppressWarnings("rawtypes")
+	GenericData.Array record = Converter.createDatum(schema, xml);
       Object firstRecord = record.get(0);
       assertTrue(firstRecord instanceof GenericData.Record);
       assertEquals("s", ((GenericData.Record) firstRecord).get("s"));
