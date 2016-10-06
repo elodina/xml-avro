@@ -4,7 +4,7 @@
 
     <groupId>net.elodina</groupId>
     <artifactId>xml-avro</artifactId>
-    <version>0.0.2-SNAPSHOT</version>
+    <version>0.0.3-SNAPSHOT</version>
 
     <dependencies>
         <dependency>

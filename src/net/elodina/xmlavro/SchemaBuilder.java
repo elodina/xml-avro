@@ -239,11 +239,11 @@ public class SchemaBuilder {
 		if (type.derivedFromType(SchemaGrammar.fAnySimpleType, XSConstants.DERIVATION_EXTENSION)) {
 			Schema fieldSchema = createTypeSchema(type.getBaseType(), true, false);
 			if (type.getBaseType().getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE) {
-				String name = validName("_text");
+				String name = validName("text_value");
 				name = SchemaBuilder.uniqueFieldName(fields.values(), name);
 
 				Schema.Field field = new Schema.Field(name, fieldSchema, null, null);
-				field.addProp(Source.SOURCE, "" + new Source("_text", false));
+				field.addProp(Source.SOURCE, "" + new Source("text_value", false));
 
 				fields.put(field.getProp(Source.SOURCE), field);
 			}

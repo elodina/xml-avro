@@ -233,12 +233,8 @@ public class DatumBuilder {
 			}
 			// Royce - Added for element value (when attributes are available)
 			String eleValue = el.getTextContent();
-			// String name = el.getNodeName();
-			// if (name.equalsIgnoreCase("countryCode")){
-			// name = el.getNodeName();
-			// }
 			if (eleValue != null && !eleValue.equals("")) {
-				Schema.Field field = getFieldBySource(schema, new Source("_text", false));
+				Schema.Field field = getFieldBySource(schema, new Source("text_value", false));
 				if (field != null) {
 					Node attr = el.getFirstChild();
 					Object datum = createNodeDatum(field.schema(), attr, false);
