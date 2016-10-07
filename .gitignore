@@ -9,3 +9,4 @@ tmp
 *.war
 *.ear
 /xsd/
+/bin/
