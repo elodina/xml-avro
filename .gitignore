@@ -10,3 +10,5 @@ tmp
 *.ear
 /xsd/
 /bin/
+/.gradle/
+/build/
