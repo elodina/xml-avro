@@ -70,9 +70,19 @@ public class DatumBuilder {
 
 	private Schema schema;
 	private boolean caseSensitiveNames = true;
+	private String split;
 
 	public DatumBuilder(Schema schema) {
 		this.schema = schema;
+		split = "";
+	}
+
+	public DatumBuilder(Schema schema, String split) {
+		this.schema = schema;
+		if (split == null)
+			this.split = "";
+		else
+			this.split = split;
 	}
 
 	public boolean isCaseSensitiveNames() {
@@ -108,8 +118,39 @@ public class DatumBuilder {
 	}
 
 	@SuppressWarnings("unchecked")
-	public <T> T createDatum(Element el) {
-		return (T) createNodeDatum(schema, el, false);
+	public <T> T createDatum(Element ele) {
+		ArrayList<Node> eleList = new ArrayList<Node>();
+		if (!split.equals(""))
+			eleList = searchElement(ele, split);
+		else
+			eleList.add(ele);
+		return (T) createNodeDatum(schema, ele, false);
+	}
+
+	private ArrayList<Node> searchElement(Node ele, String split) {
+		String name = ele.getLocalName();
+		if (name.equals(split)) {
+			ArrayList<Node> eleList = new ArrayList<Node>();
+			eleList.add(ele);
+			return eleList;
+		} else {
+			NodeList elements = ((Element) ele).getElementsByTagName(split);
+			if (elements.getLength() == 0) {
+				elements = ele.getChildNodes();
+				for (int i = 0; i < elements.getLength(); i++) {
+					ArrayList<Node> nodes = searchElement(elements.item(i), split);
+					if (nodes != null)
+						return nodes;
+				}
+				return null;
+			} else {
+				ArrayList<Node> eleList = new ArrayList<Node>();
+				for (int i = 0; i < elements.getLength(); i++) {
+					eleList.add(elements.item(i));
+				}
+				return eleList;
+			}
+		}
 	}
 
 	private Object createNodeDatum(Schema schema, Node source, boolean setRecordFromNode) {
