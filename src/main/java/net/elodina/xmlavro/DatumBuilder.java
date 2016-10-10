@@ -124,7 +124,11 @@ public class DatumBuilder {
 			eleList = searchElement(ele, split);
 		else
 			eleList.add(ele);
-		return (T) createNodeDatum(schema, ele, false);
+		List<Object> datums = new ArrayList<Object>();
+		for (int i = 0; i < eleList.size(); i++) {
+			datums.add(createNodeDatum(schema, eleList.get(i), false));
+		}
+		return (T) datums;
 	}
 
 	private ArrayList<Node> searchElement(Node ele, String split) {
@@ -181,6 +185,9 @@ public class DatumBuilder {
 		GenericData.Array array = new GenericData.Array(numElements, schema);
 
 		for (int i = 0; i < numElements; i++) {
+			Node childNode = childNodes.item(i);
+			if (childNode.getNodeType() != Node.ELEMENT_NODE)
+				continue;
 			Element child = (Element) childNodes.item(i);
 			// noinspection unchecked
 			array.add(createNodeDatum(elementType, child, true));

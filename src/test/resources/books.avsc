@@ -1,0 +1,34 @@
+{
+	"type" : "record",
+	"name" : "book",
+	"fields" : [ {
+	  "name" : "id",
+	  "type" : [ "null", "string" ],
+	  "source" : "attribute id"
+	}, {
+	  "name" : "author",
+	  "type" : "string",
+	  "source" : "element author"
+	}, {
+	  "name" : "title",
+	  "type" : "string",
+	  "source" : "element title"
+	}, {
+	  "name" : "genre",
+	  "type" : "string",
+	  "source" : "element genre"
+	}, {
+	  "name" : "price",
+	  "type" : "float",
+	  "source" : "element price"
+	}, {
+	  "name" : "pub_date",
+	  "type" : [ "null", "string" ],
+	  "source" : "element pub_date"
+	}, {
+	  "name" : "review",
+	  "type" : "string",
+	  "source" : "element review"
+	}],
+    "source" : "element book"
+  }

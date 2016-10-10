@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'maven'
 
 group = 'net.elodina'
-version = '0.0.3-SNAPSHOT'
+version = '0.0.4-SNAPSHOT'
 
 description = "A simple tool to conver xml to avro and their respective schemas"
 
@@ -12,7 +12,6 @@ targetCompatibility = 1.7
 
 
 repositories {
-        
      maven { url "http://repo.maven.apache.org/maven2" }
 }
 dependencies {

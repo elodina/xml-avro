@@ -159,13 +159,13 @@ public class DataConverter {
 
 		Schema schema = new Schema.Parser().parse(opts.avscFile);
 
-		DatumBuilder datumBuilder = new DatumBuilder(schema);
-		Object datum = null;
+		DatumBuilder datumBuilder = new DatumBuilder(schema, opts.splitBy);
+		List<Object> datums = null;
 		if (opts.outFormat == Options.Format.FILE)
-			datum = datumBuilder.createDatum(opts.xmlFile);
+			datums = datumBuilder.createDatum(opts.xmlFile);
 		else {
 			BufferedInputStream br = new BufferedInputStream(System.in);
-			datum = datumBuilder.createDatum(br);
+			datums = datumBuilder.createDatum(br);
 		}
 		try {
 			OutputStream stream;
@@ -178,7 +178,8 @@ public class DataConverter {
 			DataFileWriter<Object> fileWriter = new DataFileWriter<>(datumWriter);
 			fileWriter.setCodec(CodecFactory.snappyCodec());
 			fileWriter.create(schema, stream);
-			fileWriter.append(datum);
+			for (int i = 0; i < datums.size(); i++)
+				fileWriter.append(datums.get(i));
 			fileWriter.flush();
 			fileWriter.close();
 		} catch (Exception e) {
