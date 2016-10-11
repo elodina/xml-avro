@@ -12,21 +12,21 @@ targetCompatibility = 1.7
 
 
 repositories {
-     maven { url "http://repo.maven.apache.org/maven2" }
+    maven { url "http://repo.maven.apache.org/maven2" }
 }
 dependencies {
     compile 'org.slf4j:slf4j-api:1.7.5'
-	compile 'org.apache.avro:avro:1.7.5'
+    compile 'org.apache.avro:avro:1.7.5'
     compile 'org.skyscreamer:jsonassert:1.2.3'
-	compile 'xerces:xercesImpl:2.11.0'
+    compile 'xerces:xercesImpl:2.11.0'
     testCompile 'junit:junit:4.8.1'
 }
 
 task fatJar(type: Jar) {
-	manifest {
+    manifest {
         attributes 'Implementation-Title': name,
-        	'Implementation-Version': version,
-        	'Main-Class': 'net.elodina.xmlavro.Converter'
+                'Implementation-Version': version,
+                'Main-Class': 'net.elodina.xmlavro.Converter'
     }
     baseName = project.name + '-all'
     from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
