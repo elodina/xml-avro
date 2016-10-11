@@ -5,9 +5,9 @@
  * The ASF licenses this file to You under the Apache License, Version 2.0
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
- * 
- *    http://www.apache.org/licenses/LICENSE-2.0
- *
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -36,136 +36,142 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
 
 public class AdvancedConverter {
-	public static Schema createSchema(String xsd) {
-		return new SchemaBuilder().createSchema(xsd);
-	}
+    public static Schema createSchema(String xsd) {
+        return new SchemaBuilder().createSchema(xsd);
+    }
 
-	public static Schema createSchema(File file) {
-		return new SchemaBuilder().createSchema(file);
-	}
+    public static Schema createSchema(File file) {
+        return new SchemaBuilder().createSchema(file);
+    }
 
-	public static Schema createSchema(Reader reader) {
-		return new SchemaBuilder().createSchema(reader);
-	}
+    public static Schema createSchema(Reader reader) {
+        return new SchemaBuilder().createSchema(reader);
+    }
 
-	public static Schema createSchema(InputStream stream) {
-		return new SchemaBuilder().createSchema(stream);
-	}
+    public static Schema createSchema(InputStream stream) {
+        return new SchemaBuilder().createSchema(stream);
+    }
 
-	public static <T> T createDatum(Schema schema, File file) {
-		return new DatumBuilder(schema).createDatum(file);
-	}
+    public static <T> T createDatum(Schema schema, File file) {
+        return new DatumBuilder(schema).createDatum(file);
+    }
 
-	public static <T> T createDatum(Schema schema, String xml) {
-		return new DatumBuilder(schema).createDatum(xml);
-	}
+    public static <T> T createDatum(Schema schema, String xml) {
+        return new DatumBuilder(schema).createDatum(xml);
+    }
 
-	public static <T> T createDatum(Schema schema, Reader reader) {
-		return new DatumBuilder(schema).createDatum(reader);
-	}
+    public static <T> T createDatum(Schema schema, Reader reader) {
+        return new DatumBuilder(schema).createDatum(reader);
+    }
 
-	public static <T> T createDatum(Schema schema, InputStream stream) {
-		return new DatumBuilder(schema).createDatum(stream);
-	}
+    public static <T> T createDatum(Schema schema, InputStream stream) {
+        return new DatumBuilder(schema).createDatum(stream);
+    }
 
-	private static class BaseDirResolver implements SchemaBuilder.Resolver {
-		private File baseDir;
+    private static class BaseDirResolver implements SchemaBuilder.Resolver {
+        private File baseDir;
 
-		private BaseDirResolver(File baseDir) {
-			this.baseDir = baseDir;
-			// Change Working directory to the base directory
-			System.setProperty("user.dir", baseDir.getAbsolutePath());
-		}
+        private BaseDirResolver(File baseDir) {
+            this.baseDir = baseDir;
+            // Change Working directory to the base directory
+            System.setProperty("user.dir", baseDir.getAbsolutePath());
+        }
 
-		public InputStream getStream(String systemId) {
-			File file = new File(baseDir, systemId);
+        public InputStream getStream(String systemId) {
+            File file = new File(baseDir, systemId);
 
-			try {
-				return new FileInputStream(file);
-			} catch (FileNotFoundException e) {
-				return null;
-			}
-		}
-	}
+            try {
+                return new FileInputStream(file);
+            } catch (FileNotFoundException e) {
+                return null;
+            }
+        }
+    }
 
-	public static void main(String... args) throws IOException {
-		Options opts;
-		try {
-			opts = new Options(args);
-		} catch (IllegalArgumentException e) {
-			System.out
-					.println("XML Avro converter\nError: " + e.getMessage() + "\n" + "Usage: " + Options.USAGE + "\n");
-			System.exit(1);
-			return;
-		}
+    public static void main(String... args) throws IOException {
+        Options opts;
+        try {
+            if (args.length == 0)
+                throw new IllegalArgumentException("No Arguments specified");
+            opts = new Options(args);
+        } catch (IllegalArgumentException e) {
+            System.out
+                    .println("XML Avro converter\nError: " + e.getMessage() + "\n\n" + Options.USAGE + "\n");
+            System.exit(1);
+            return;
+        }
 
-		AdvancedConverter c = new AdvancedConverter();
+        AdvancedConverter c = new AdvancedConverter();
 
-		c.debug = opts.debug;
-		c.baseDir = opts.baseDir;
+        c.debug = opts.debug;
+        c.baseDir = opts.baseDir;
 
-		for (int i = 0; i < opts.modes.size(); i++) {
-			Options.Mode mode = opts.modes.get(i);
-			switch (mode) {
-			case XSD:
-				c.xsdIn = new FileInputStream(opts.xsdFile);
-				c.avscOut = new FileWriter(opts.avscFile);
-				if (!opts.stdout) {
-					System.out.println("Converting: " + opts.xsdFile + " -> " + opts.avscFile);
-				}
-				c.convertXSD();
-				break;
-			case XML:
-				if (opts.stdout) {
-					c.xmlIn = new BufferedInputStream(System.in);
-					c.avroOut = new BufferedOutputStream(System.out);
-				} else {
-					c.xmlIn = new FileInputStream(opts.xmlFile);
-					c.avroOut = new FileOutputStream(opts.avroFile);
-					System.out.println("Converting: " + opts.xmlFile + " -> " + opts.avroFile);
-				}
-				c.convertXML(opts.avscFile, opts.split);
-				break;
-			}
-		}
-	}
+        for (int i = 0; i < opts.modes.size(); i++) {
+            Options.Mode mode = opts.modes.get(i);
+            switch (mode) {
+                case XSD:
+                    c.xsdIn = new FileInputStream(opts.xsdFile);
+                    c.avscOut = new FileWriter(opts.avscFile);
+                    if (!opts.stdout) {
+                        System.out.println("Converting: " + opts.xsdFile + " -> " + opts.avscFile);
+                    }
+                    c.convertXSD();
+                    break;
+                case XML:
+                    if (opts.stdout) {
+                        c.xmlIn = new BufferedInputStream(System.in);
+                        c.avroOut = new BufferedOutputStream(System.out);
+                    } else {
+                        c.xmlIn = new FileInputStream(opts.xmlFile);
+                        c.avroOut = new FileOutputStream(opts.avroFile);
+                        System.out.println("Converting: " + opts.xmlFile + " -> " + opts.avroFile);
+                    }
+                    c.convertXML(opts.avscFile, opts.split);
+                    break;
+            }
+        }
+    }
 
-	InputStream xmlIn;
-	OutputStream avroOut;
-	FileWriter avscOut;
-	FileInputStream xsdIn;
-	boolean debug;
-	File baseDir;
+    InputStream xmlIn;
+    OutputStream avroOut;
+    FileWriter avscOut;
+    FileInputStream xsdIn;
+    boolean debug;
+    File baseDir;
 
-	private void convertXSD() throws IOException {
-		SchemaBuilder schemaBuilder = new SchemaBuilder();
-		schemaBuilder.setDebug(debug);
-		if (baseDir != null) {
-			schemaBuilder.setResolver(new BaseDirResolver(baseDir));
-		}
-		Schema schema = schemaBuilder.createSchema(xsdIn);
-		writeAvsc(schema);
-	}
+    private void convertXSD() throws IOException {
+        SchemaBuilder schemaBuilder = new SchemaBuilder();
+        schemaBuilder.setDebug(debug);
+        if (baseDir != null) {
+            schemaBuilder.setResolver(new BaseDirResolver(baseDir));
+        }
+        Schema schema = schemaBuilder.createSchema(xsdIn);
+        xsdIn.close();
+        writeAvsc(schema);
+    }
 
-	private void writeAvsc(Schema schema) throws IOException {
-		avscOut.write(schema.toString(true));
-	}
+    private void writeAvsc(Schema schema) throws IOException {
+        avscOut.write(schema.toString(true));
+        avscOut.close();
+    }
 
-	private void convertXML(File avscFile, String split) throws IOException {
-		Schema schema = new Schema.Parser().parse(avscFile);
-		DatumBuilder datumBuilder = new DatumBuilder(schema, split);
-		List<Object> datums = datumBuilder.createDatum(xmlIn);
-		writeAvro(schema, datums);
-	}
+    private void convertXML(File avscFile, String split) throws IOException {
+        Schema schema = new Schema.Parser().parse(avscFile);
+        DatumBuilder datumBuilder = new DatumBuilder(schema, split);
+        List<Object> datums = datumBuilder.createDatum(xmlIn);
+        xmlIn.close();
+        writeAvro(schema, datums);
+    }
 
-	private void writeAvro(Schema schema, List<Object> datums) throws IOException {
-		DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
-		DataFileWriter<Object> fileWriter = new DataFileWriter<>(datumWriter);
-		fileWriter.setCodec(CodecFactory.snappyCodec());
-		fileWriter.create(schema, avroOut);
-		for (int i = 0; i < datums.size(); i++)
-			fileWriter.append(datums.get(i));
-		fileWriter.flush();
-		fileWriter.close();
-	}
+    private void writeAvro(Schema schema, List<Object> datums) throws IOException {
+        DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
+        DataFileWriter<Object> fileWriter = new DataFileWriter<>(datumWriter);
+        fileWriter.setCodec(CodecFactory.snappyCodec());
+        fileWriter.create(schema, avroOut);
+        for (int i = 0; i < datums.size(); i++)
+            fileWriter.append(datums.get(i));
+        fileWriter.flush();
+        avroOut.close();
+        fileWriter.close();
+    }
 }
