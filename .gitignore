@@ -12,3 +12,4 @@ tmp
 /bin/
 /.gradle/
 /build/
+/out/
