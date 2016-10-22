@@ -1,34 +1,63 @@
 {
-	"type" : "record",
-	"name" : "book",
-	"fields" : [ {
-	  "name" : "id",
-	  "type" : [ "null", "string" ],
-	  "source" : "attribute id"
-	}, {
-	  "name" : "author",
-	  "type" : "string",
-	  "source" : "element author"
-	}, {
-	  "name" : "title",
-	  "type" : "string",
-	  "source" : "element title"
-	}, {
-	  "name" : "genre",
-	  "type" : "string",
-	  "source" : "element genre"
-	}, {
-	  "name" : "price",
-	  "type" : "float",
-	  "source" : "element price"
-	}, {
-	  "name" : "pub_date",
-	  "type" : [ "null", "string" ],
-	  "source" : "element pub_date"
-	}, {
-	  "name" : "review",
-	  "type" : "string",
-	  "source" : "element review"
-	}],
+  "type" : "record",
+  "name" : "BooksForm",
+  "fields" : [ {
+    "name" : "book",
+    "type" : {
+      "type" : "array",
+      "items" : {
+        "type" : "record",
+        "name" : "BookForm",
+        "fields" : [ {
+          "name" : "id",
+          "type" : [ "null", "string" ],
+          "source" : "attribute id"
+        }, {
+          "name" : "author",
+          "type" : "string",
+          "source" : "element author"
+        }, {
+          "name" : "title",
+          "type" : "string",
+          "source" : "element title"
+        }, {
+          "name" : "genre",
+          "type" : "string",
+          "source" : "element genre"
+        }, {
+          "name" : "price",
+          "type" : "float",
+          "source" : "element price"
+        }, {
+          "name" : "price2",
+          "type" : [ "null", "float" ],
+          "source" : "element price2"
+        }, {
+          "name" : "pub_date",
+          "type" : [ "null", "string" ],
+          "source" : "element pub_date"
+        }, {
+          "name" : "review",
+          "type" : "string",
+          "source" : "element review"
+        }, {
+          "name" : "alias",
+          "type" : {
+            "type" : "record",
+            "name" : "AliasType",
+            "fields" : [ {
+              "name" : "author",
+              "type" : {
+                "type" : "array",
+                "items" : "string"
+              },
+              "source" : "element author"
+            } ]
+          },
+          "source" : "element alias"
+        } ]
+      }
+    },
     "source" : "element book"
-  }
+  } ]
+}

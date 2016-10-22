@@ -36,38 +36,6 @@ import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
 
 public class AdvancedConverter {
-    public static Schema createSchema(String xsd) {
-        return new SchemaBuilder().createSchema(xsd);
-    }
-
-    public static Schema createSchema(File file) {
-        return new SchemaBuilder().createSchema(file);
-    }
-
-    public static Schema createSchema(Reader reader) {
-        return new SchemaBuilder().createSchema(reader);
-    }
-
-    public static Schema createSchema(InputStream stream) {
-        return new SchemaBuilder().createSchema(stream);
-    }
-
-    public static <T> T createDatum(Schema schema, File file) {
-        return new DatumBuilder(schema).createDatum(file);
-    }
-
-    public static <T> T createDatum(Schema schema, String xml) {
-        return new DatumBuilder(schema).createDatum(xml);
-    }
-
-    public static <T> T createDatum(Schema schema, Reader reader) {
-        return new DatumBuilder(schema).createDatum(reader);
-    }
-
-    public static <T> T createDatum(Schema schema, InputStream stream) {
-        return new DatumBuilder(schema).createDatum(stream);
-    }
-
     private static class BaseDirResolver implements SchemaBuilder.Resolver {
         private File baseDir;
 
