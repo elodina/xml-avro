@@ -246,6 +246,14 @@ public class SchemaBuilder {
             Schema.Field field = createField(fields.values(), attrDecl, attrDecl.getTypeDefinition(), optional, false);
             fields.put(field.getProp(Source.SOURCE), field);
         }
+
+        // Added wildcard attribute
+        XSWildcard wildcard = type.getAttributeWildcard();
+        if (wildcard != null) {
+            Schema.Field field = createField(fields.values(), wildcard, null, true, false);
+            fields.put(field.getProp(Source.SOURCE), field);
+        }
+
         // Added for Extension
         if (type.derivedFromType(SchemaGrammar.fAnySimpleType, XSConstants.DERIVATION_EXTENSION)) {
             Schema fieldSchema = createTypeSchema(type.getBaseType(), true, false);

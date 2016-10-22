@@ -254,11 +254,21 @@ public class DatumBuilder {
 
                 if (!setRecordFieldFromNode) {
                     Schema.Field field = getFieldBySource(schema, new Source(attr.getName(), true));
-                    if (field == null)
-                        throw new ConverterException("Unsupported attribute " + attr.getName());
+                    if (field == null) {
+                        // Handle wildcard attributes
+                        Schema.Field anyField = schema.getField(Source.WILDCARD);
+                        if (anyField == null)
+                            throw new ConverterException("Could not find attribute " + attr.getName() + " in Avro Schema " + schema.getName()
+                                    + " , neither as specific attribute nor 'any' attribute");
 
-                    Object datum = createNodeDatum(field.schema(), attr, false);
-                    record.put(field.name(), datum);
+                        @SuppressWarnings("unchecked")
+                        Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
+                        map.put(attr.getName(), attr.getValue());
+//                        throw new ConverterException("Unsupported attribute " + attr.getName());
+                    } else {
+                        Object datum = createNodeDatum(field.schema(), attr, false);
+                        record.put(field.name(), datum);
+                    }
                 }
             }
             // Royce - Added for element value (when attributes are available)
