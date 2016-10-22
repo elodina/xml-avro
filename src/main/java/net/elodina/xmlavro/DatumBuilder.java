@@ -36,6 +36,7 @@ public class DatumBuilder {
         this.schema = schema;
         split = "";
     }
+
     public DatumBuilder(Schema schema, String split) {
         this.schema = schema;
         if (split == null)
@@ -339,9 +340,11 @@ public class DatumBuilder {
             Schema topSchema = field.schema();
             switch (topSchema.getType()) {
                 case ARRAY: {
-                    Schema.Field fieldBySource = getFieldBySource(topSchema.getElementType(), source);
-                    if (fieldBySource != null) {
-                        return field;
+                    if (!PRIMITIVES.contains(topSchema.getElementType().getType())) {
+                        Schema.Field fieldBySource = getFieldBySource(topSchema.getElementType(), source);
+                        if (fieldBySource != null) {
+                            return field;
+                        }
                     }
                 }
                 break;

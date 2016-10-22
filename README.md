@@ -1,8 +1,3 @@
-# Upcoming
-Streaming Data.
-
-Seperate converter for avsc and avro
-
 # xml-avro
 This project provides Converter to convert generic xsd/xml to asvc/avro files.
 Avro schema and avro file are generated from xsd schema and xml file.
@@ -19,15 +14,15 @@ Additionally it includes simple schemaless converter that converts xml to avro a
 ## Schema-based converter
 Usage:
 ```
-XML Avro converter.
-Usage: "{-d|--debug} {-b|--baseDir <baseDir>} <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}"
+XSD to AVSC Usage : {-d|--debug} {-b|--baseDir <baseDir>} {-xsd|--toAvsc <xsdFile> {<avscFile>}}
+XML to AVRO Usage : {-s|--stream|--stdout} {-xml|--toAvro <avscFile> {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}}
+Mixed Usage : {-d|--debug} {-b|--baseDir <baseDir>} {-xsd|--toAvsc <xsdFile> {<avscFile>}} {-s|--stream|--stdout} {-xml|--toAvro {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}}
 ```
 ## Restrictions
 Schema-based converter currently only supports conversion in one direction: from xml to avro.
 
 Converter has following restriction:
 - xml docs with multiple namespaces are not supported;
-- complex type extensions are not supported;
 
 ## Simple converter
 Usage:
