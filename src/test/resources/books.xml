@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<x:books xmlns:x="urn:books" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:books C:\Geetha\STOCKX~1\books.xsd">
+	<book id="bk001">
+		<author>Writer</author>
+		<title>The First Book</title>
+		<genre>Fiction</genre>
+		<price>44.95</price>
+		<price2>40.95</price2>
+		<pub_date>2000-10-01</pub_date>
+		<review>An amazing story of nothing.</review>
+		<alias>Book 1</alias>
+		<alias>The book 1</alias>
+	</book>
+	<book id="bk002">
+		<author>Poet</author>
+		<title>The Poet's First Poem</title>
+		<genre>Poem</genre>
+		<price>24.95</price>
+		<review>Least poetic poems.</review>
+		<alias>Book 1</alias>
+	</book>
+</x:books>

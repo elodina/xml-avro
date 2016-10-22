@@ -9,3 +9,6 @@ tmp
 *.war
 *.ear
 /xsd/
+/bin/
+/.gradle/
+/build/

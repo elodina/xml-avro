@@ -1,3 +1,8 @@
+# Upcoming
+Streaming Data.
+
+Seperate converter for avsc and avro
+
 # xml-avro
 This project provides Converter to convert generic xsd/xml to asvc/avro files.
 Avro schema and avro file are generated from xsd schema and xml file.
