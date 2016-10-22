@@ -1,20 +1,10 @@
 package net.elodina.xmlavro;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.Reader;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.TimeZone;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.w3c.dom.*;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
 
 import javax.xml.bind.DatatypeConverter;
 import javax.xml.parsers.DocumentBuilder;
@@ -26,19 +16,34 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
-
-import org.apache.avro.Schema;
-import org.apache.avro.generic.GenericData;
-import org.w3c.dom.Attr;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
+import java.io.*;
+import java.util.*;
 
 public class DatumBuilder {
+    private static final List<Schema.Type> PRIMITIVES;
+    private static TimeZone defaultTimeZone = TimeZone.getTimeZone("UTC-0");
+
+    static {
+        PRIMITIVES = Collections.unmodifiableList(Arrays.asList(Schema.Type.STRING, Schema.Type.INT, Schema.Type.LONG,
+                Schema.Type.FLOAT, Schema.Type.DOUBLE, Schema.Type.BOOLEAN, Schema.Type.NULL));
+    }
+
+    private Schema schema;
+    private boolean caseSensitiveNames = true;
+    private String split;
+
+    public DatumBuilder(Schema schema) {
+        this.schema = schema;
+        split = "";
+    }
+    public DatumBuilder(Schema schema, String split) {
+        this.schema = schema;
+        if (split == null)
+            this.split = "";
+        else
+            this.split = split;
+    }
+
     public static Element parse(InputSource source) {
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
@@ -52,38 +57,18 @@ public class DatumBuilder {
         }
     }
 
-    private static final List<Schema.Type> PRIMITIVES;
-
-    static {
-        PRIMITIVES = Collections.unmodifiableList(Arrays.asList(Schema.Type.STRING, Schema.Type.INT, Schema.Type.LONG,
-                Schema.Type.FLOAT, Schema.Type.DOUBLE, Schema.Type.BOOLEAN, Schema.Type.NULL));
+    public static TimeZone getDefaultTimeZone() {
+        return defaultTimeZone;
     }
-
-    private static TimeZone defaultTimeZone = TimeZone.getTimeZone("UTC-0");
 
     public static void setDefaultTimeZone(TimeZone timeZone) {
         defaultTimeZone = timeZone;
     }
 
-    public static TimeZone getDefaultTimeZone() {
-        return defaultTimeZone;
-    }
-
-    private Schema schema;
-    private boolean caseSensitiveNames = true;
-    private String split;
-
-    public DatumBuilder(Schema schema) {
-        this.schema = schema;
-        split = "";
-    }
-
-    public DatumBuilder(Schema schema, String split) {
-        this.schema = schema;
-        if (split == null)
-            this.split = "";
-        else
-            this.split = split;
+    private static long parseDateTime(String text) {
+        Calendar c = DatatypeConverter.parseDateTime(text);
+        c.setTimeZone(defaultTimeZone);
+        return c.getTimeInMillis();
     }
 
     public boolean isCaseSensitiveNames() {
@@ -226,12 +211,6 @@ public class DatumBuilder {
             return text;
 
         throw new ConverterException("Unsupported type " + type);
-    }
-
-    private static long parseDateTime(String text) {
-        Calendar c = DatatypeConverter.parseDateTime(text);
-        c.setTimeZone(defaultTimeZone);
-        return c.getTimeInMillis();
     }
 
     private GenericData.Record createRecord(Schema schema, Element el, boolean setRecordFieldFromNode) {

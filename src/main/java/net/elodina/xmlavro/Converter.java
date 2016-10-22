@@ -16,26 +16,15 @@
  */
 package net.elodina.xmlavro;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.Writer;
-import java.util.ArrayList;
-import java.util.List;
-
 import org.apache.avro.Schema;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
+
+import java.io.*;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Converter {
     public static Schema createSchema(String xsd) {
@@ -71,23 +60,73 @@ public class Converter {
         return new DatumBuilder(schema).createDatum(stream);
     }
 
-    private static class Options {
-        static final String USAGE = "{-d|--debug} {-b|--baseDir <baseDir>} {-o|--output <outFormat>} <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}";
-
-        enum Format {
-            FILE, STDOUT
+    public static void main(String... args) throws IOException {
+        Options opts;
+        try {
+            opts = new Options(args);
+        } catch (IllegalArgumentException e) {
+            System.out
+                    .println("XML Avro converter.\nError: " + e.getMessage() + "\n" + "Usage: " + Options.USAGE + "\n");
+            System.exit(1);
+            return;
         }
 
+        if (opts.outFormat == Options.Format.FILE) {
+            System.out.println("Converting: \n" + opts.xsdFile + " -> " + opts.avscFile + "\n" + opts.xmlFile + " -> "
+                    + opts.avroFile);
+        }
+
+        SchemaBuilder schemaBuilder = new SchemaBuilder();
+        schemaBuilder.setDebug(opts.debug);
+        if (opts.baseDir != null) {
+            schemaBuilder.setResolver(new BaseDirResolver(opts.baseDir));
+        }
+        Schema schema = schemaBuilder.createSchema(opts.xsdFile);
+
+        try (Writer writer = new FileWriter(opts.avscFile)) {
+            writer.write(schema.toString(true));
+        }
+
+        DatumBuilder datumBuilder = new DatumBuilder(schema);
+        List<Object> datums = null;
+        if (opts.outFormat == Options.Format.FILE) {
+            datums = datumBuilder.createDatum(opts.xmlFile);
+        } else {
+            BufferedInputStream br = new BufferedInputStream(System.in);
+            datums = datumBuilder.createDatum(br);
+        }
+        try {
+            OutputStream stream;
+            if (opts.outFormat == Options.Format.FILE) {
+                stream = new FileOutputStream(opts.avroFile);
+            } else {
+                stream = new BufferedOutputStream(System.out);
+            }
+
+            DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
+            // datumWriter.write(datum,EncoderFactory.get().directBinaryEncoder(stream,
+            // null));
+            DataFileWriter<Object> fileWriter = new DataFileWriter<>(datumWriter);
+            fileWriter.setCodec(CodecFactory.snappyCodec());
+            fileWriter.create(schema, stream);
+            for (int i = 0; i < datums.size(); i++)
+                fileWriter.append(datums.get(i));
+            fileWriter.flush();
+            fileWriter.close();
+        } catch (Exception e) {
+            throw e;
+        }
+    }
+
+    private static class Options {
+        static final String USAGE = "{-d|--debug} {-b|--baseDir <baseDir>} {-o|--output <outFormat>} <xsdFile> <xmlFile> {<avscFile>} {<avroFile>}";
         File xsdFile;
         File xmlFile;
-
         File avscFile;
         File avroFile;
-
         boolean debug;
         File baseDir;
         Format outFormat = Format.FILE;
-
         Options(String... args) {
             List<String> files = new ArrayList<>();
 
@@ -165,6 +204,10 @@ public class Converter {
             }
             return new File(baseDir, file.getPath());
         }
+
+        enum Format {
+            FILE, STDOUT
+        }
     }
 
     private static class BaseDirResolver implements SchemaBuilder.Resolver {
@@ -184,64 +227,6 @@ public class Converter {
             } catch (FileNotFoundException e) {
                 return null;
             }
-        }
-    }
-
-    public static void main(String... args) throws IOException {
-        Options opts;
-        try {
-            opts = new Options(args);
-        } catch (IllegalArgumentException e) {
-            System.out
-                    .println("XML Avro converter.\nError: " + e.getMessage() + "\n" + "Usage: " + Options.USAGE + "\n");
-            System.exit(1);
-            return;
-        }
-
-        if (opts.outFormat == Options.Format.FILE) {
-            System.out.println("Converting: \n" + opts.xsdFile + " -> " + opts.avscFile + "\n" + opts.xmlFile + " -> "
-                    + opts.avroFile);
-        }
-
-        SchemaBuilder schemaBuilder = new SchemaBuilder();
-        schemaBuilder.setDebug(opts.debug);
-        if (opts.baseDir != null) {
-            schemaBuilder.setResolver(new BaseDirResolver(opts.baseDir));
-        }
-        Schema schema = schemaBuilder.createSchema(opts.xsdFile);
-
-        try (Writer writer = new FileWriter(opts.avscFile)) {
-            writer.write(schema.toString(true));
-        }
-
-        DatumBuilder datumBuilder = new DatumBuilder(schema);
-        List<Object> datums = null;
-        if (opts.outFormat == Options.Format.FILE) {
-            datums = datumBuilder.createDatum(opts.xmlFile);
-        } else {
-            BufferedInputStream br = new BufferedInputStream(System.in);
-            datums = datumBuilder.createDatum(br);
-        }
-        try {
-            OutputStream stream;
-            if (opts.outFormat == Options.Format.FILE) {
-                stream = new FileOutputStream(opts.avroFile);
-            } else {
-                stream = new BufferedOutputStream(System.out);
-            }
-
-            DatumWriter<Object> datumWriter = new SpecificDatumWriter<>(schema);
-            // datumWriter.write(datum,EncoderFactory.get().directBinaryEncoder(stream,
-            // null));
-            DataFileWriter<Object> fileWriter = new DataFileWriter<>(datumWriter);
-            fileWriter.setCodec(CodecFactory.snappyCodec());
-            fileWriter.create(schema, stream);
-            for (int i = 0; i < datums.size(); i++)
-                fileWriter.append(datums.get(i));
-            fileWriter.flush();
-            fileWriter.close();
-        } catch (Exception e) {
-            throw e;
         }
     }
 }

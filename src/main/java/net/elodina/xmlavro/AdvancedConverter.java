@@ -16,45 +16,22 @@
  */
 package net.elodina.xmlavro;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.util.List;
-
 import org.apache.avro.Schema;
 import org.apache.avro.file.CodecFactory;
 import org.apache.avro.file.DataFileWriter;
 import org.apache.avro.io.DatumWriter;
 import org.apache.avro.specific.SpecificDatumWriter;
 
+import java.io.*;
+import java.util.List;
+
 public class AdvancedConverter {
-    private static class BaseDirResolver implements SchemaBuilder.Resolver {
-        private File baseDir;
-
-        private BaseDirResolver(File baseDir) {
-            this.baseDir = baseDir;
-            // Change Working directory to the base directory
-            System.setProperty("user.dir", baseDir.getAbsolutePath());
-        }
-
-        public InputStream getStream(String systemId) {
-            File file = new File(baseDir, systemId);
-
-            try {
-                return new FileInputStream(file);
-            } catch (FileNotFoundException e) {
-                return null;
-            }
-        }
-    }
+    InputStream xmlIn;
+    OutputStream avroOut;
+    FileWriter avscOut;
+    FileInputStream xsdIn;
+    boolean debug;
+    File baseDir;
 
     public static void main(String... args) throws IOException {
         Options opts;
@@ -100,13 +77,6 @@ public class AdvancedConverter {
         }
     }
 
-    InputStream xmlIn;
-    OutputStream avroOut;
-    FileWriter avscOut;
-    FileInputStream xsdIn;
-    boolean debug;
-    File baseDir;
-
     private void convertXSD() throws IOException {
         SchemaBuilder schemaBuilder = new SchemaBuilder();
         schemaBuilder.setDebug(debug);
@@ -141,5 +111,25 @@ public class AdvancedConverter {
         fileWriter.flush();
         avroOut.close();
         fileWriter.close();
+    }
+
+    private static class BaseDirResolver implements SchemaBuilder.Resolver {
+        private File baseDir;
+
+        private BaseDirResolver(File baseDir) {
+            this.baseDir = baseDir;
+            // Change Working directory to the base directory
+            System.setProperty("user.dir", baseDir.getAbsolutePath());
+        }
+
+        public InputStream getStream(String systemId) {
+            File file = new File(baseDir, systemId);
+
+            try {
+                return new FileInputStream(file);
+            } catch (FileNotFoundException e) {
+                return null;
+            }
+        }
     }
 }
