@@ -1,22 +1,55 @@
 <?xml version="1.0"?>
-<x:books xmlns:x="urn:books" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:books C:\Geetha\STOCKX~1\books.xsd">
+<x:books xmlns:x="urn:books" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="urn:books C:\Geetha\STOCKX~1\books.xsd">
+    <book id="bk001">
+        <author>Writer</author>
+        <title>The First Book</title>
+        <genre>Fiction</genre>
+        <price>44.95</price>
+        <pub_date>2000-10-01</pub_date>
+        <review>An amazing story of nothing.</review>
+        <alias>
+            <alias_name>Crap 1</alias_name>
+            <alias_name>Crap 2</alias_name>
+        </alias>
+        <website>
+            <web_url>amazon</web_url>
+            <web_url>flipkart</web_url>
+            <web_url>ebay</web_url>
+            <web_url>facebook</web_url>
+        </website>
+    </book>
 	<book id="bk001">
-		<author>Writer</author>
-		<title>The First Book</title>
-		<genre>Fiction</genre>
-		<price>44.95</price>
-		<price2>40.95</price2>
-		<pub_date>2000-10-01</pub_date>
-		<review>An amazing story of nothing.</review>
-		<alias>Book 1</alias>
-		<alias>The book 1</alias>
-	</book>
-	<book id="bk002">
-		<author>Poet</author>
-		<title>The Poet's First Poem</title>
-		<genre>Poem</genre>
-		<price>24.95</price>
-		<review>Least poetic poems.</review>
-		<alias>Book 1</alias>
-	</book>
+        <author>Writer</author>
+        <title>The First Book</title>
+        <genre>Fiction</genre>
+        <price>44.95</price>
+        <pub_date>2000-10-01</pub_date>
+        <review>An amazing story of nothing.</review>
+        <alias>
+            <alias_name>Crap 1</alias_name>
+            <alias_name>Crap 2</alias_name>
+        </alias>
+        <website>
+            <web_url>amazon</web_url>
+            <web_url>flipkart</web_url>
+            <web_url>ebay</web_url>
+            <web_url>facebook</web_url>
+        </website>
+    </book>
+    <book id="bk002">
+        <author>Poet</author>
+        <title>The Poet's First Poem</title>
+        <genre>Poem</genre>
+        <price>24.95</price>
+        <review>Least poetic poems.</review>
+        <alias>
+            <alias_name>Book Made in China</alias_name>
+            <alias_name>Book made in italy</alias_name>
+        </alias>
+        <website>
+            <web_url>amazon</web_url>
+            <web_url>alibaba</web_url>
+        </website>
+    </book>
 </x:books>

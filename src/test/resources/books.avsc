@@ -29,10 +29,6 @@
           "type" : "float",
           "source" : "element price"
         }, {
-          "name" : "price2",
-          "type" : [ "null", "float" ],
-          "source" : "element price2"
-        }, {
           "name" : "pub_date",
           "type" : [ "null", "string" ],
           "source" : "element pub_date"
@@ -46,15 +42,30 @@
             "type" : "record",
             "name" : "AliasType",
             "fields" : [ {
-              "name" : "author",
+              "name" : "alias_name",
               "type" : {
                 "type" : "array",
                 "items" : "string"
               },
-              "source" : "element author"
+              "source" : "element alias_name"
             } ]
           },
           "source" : "element alias"
+        }, {
+          "name" : "website",
+          "type" : {
+            "type" : "record",
+            "name" : "WebsiteType",
+            "fields" : [ {
+              "name" : "web_url",
+              "type" : {
+                "type" : "array",
+                "items" : "string"
+              },
+              "source" : "element web_url"
+            } ]
+          },
+          "source" : "element website"
         } ]
       }
     },
