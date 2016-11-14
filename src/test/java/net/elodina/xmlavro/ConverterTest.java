@@ -71,12 +71,18 @@ public class ConverterTest {
 
     @Test
     public void rootDateTimePrimitive() {
-        rootPrimitiveWithType("xs:dateTime", "2014-10-30T14:58:33", Schema.Type.LONG, 1414681113000L);
-        rootPrimitiveWithType("xs:dateTime", "2014-09-10T12:58:33", Schema.Type.LONG, 1410353913000L);
+        rootPrimitiveWithType("xs:dateTime", "2014-10-30T14:58:33", Schema.Type.LONG, 1414681113L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33", Schema.Type.LONG, 1410328713L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33Z", Schema.Type.LONG, 1410328713L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33+00:00", Schema.Type.LONG, 1410328713L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33.55", Schema.Type.LONG, 1410328713L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33.55Z", Schema.Type.LONG, 1410328713L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T07:58:33.55+02:00", Schema.Type.LONG, 1410328713L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T03:58:33.55-02:00", Schema.Type.LONG, 1410328713L);
 
         DatumBuilder.setDefaultTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
-        rootPrimitiveWithType("xs:dateTime", "2014-10-30T07:58:33", Schema.Type.LONG, 1414681113000L);
-        rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33", Schema.Type.LONG, 1410353913000L);
+        rootPrimitiveWithType("xs:dateTime", "2014-10-30T07:58:33", Schema.Type.LONG, 1414681113L);
+        rootPrimitiveWithType("xs:dateTime", "2014-09-10T05:58:33Z", Schema.Type.LONG, 1410353913L);
     }
 
     public <T> void rootPrimitiveWithType(String xmlType, String xmlValue, Schema.Type avroType, T avroValue) {

@@ -11,7 +11,7 @@
             <xsd:element name="title" type="xsd:string"/>
             <xsd:element name="genre" type="xsd:string"/>
             <xsd:element name="price" type="xsd:float"/>
-            <xsd:element name="pub_date" type="xsd:date" minOccurs="0"/>
+            <xsd:element name="pub_date" type="xsd:dateTime" minOccurs="0"/>
             <xsd:element name="review" type="xsd:string"/>
             <xsd:element name="alias" type="bks:AliasType"/>
             <xsd:element name="website" type="bks:WebsiteType"/>

@@ -6,7 +6,7 @@
         <title>The First Book</title>
         <genre>Fiction</genre>
         <price>44.95</price>
-        <pub_date>2000-10-01</pub_date>
+        <pub_date>2015-09-08T10:46:43+02:00</pub_date>
         <review>An amazing story of nothing.</review>
         <alias>
             <alias_name>Crap 1</alias_name>
@@ -24,7 +24,7 @@
         <title>The First Book</title>
         <genre>Fiction</genre>
         <price>44.95</price>
-        <pub_date>2000-10-01</pub_date>
+        <pub_date>2015-09-08T10:46:43+02:00</pub_date>
         <review>An amazing story of nothing.</review>
         <alias>
             <alias_name>Crap 1</alias_name>

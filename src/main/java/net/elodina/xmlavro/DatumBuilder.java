@@ -22,6 +22,8 @@ import java.util.*;
 public class DatumBuilder {
     private static final List<Schema.Type> PRIMITIVES;
     private static TimeZone defaultTimeZone = TimeZone.getTimeZone("UTC-0");
+    private static final String pattern = "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.*\\d*Z?$";
+
 
     static {
         PRIMITIVES = Collections.unmodifiableList(Arrays.asList(Schema.Type.STRING, Schema.Type.INT, Schema.Type.LONG,
@@ -67,9 +69,11 @@ public class DatumBuilder {
     }
 
     private static long parseDateTime(String text) {
+        text = text.trim();
         Calendar c = DatatypeConverter.parseDateTime(text);
-        c.setTimeZone(defaultTimeZone);
-        return c.getTimeInMillis();
+        if (text.matches(pattern))
+            c.setTimeZone(defaultTimeZone);
+        return c.getTimeInMillis() / 1000;
     }
 
     public boolean isCaseSensitiveNames() {
@@ -274,7 +278,7 @@ public class DatumBuilder {
             // Royce - Added for element value (when attributes are available)
             String eleValue = el.getTextContent();
             if (eleValue != null && !eleValue.equals("")) {
-                Schema.Field field = getFieldBySource(schema, new Source("text_value", false));
+                Schema.Field field = getFieldBySource(schema, new Source(SchemaBuilder.TEXT_VALUE, false));
                 if (field != null) {
                     Node attr = el.getFirstChild();
                     Object datum = createNodeDatum(field.schema(), attr, false);

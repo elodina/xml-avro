@@ -23,6 +23,7 @@ import java.util.*;
 
 public class SchemaBuilder {
     private static Map<Short, Schema.Type> primitives = new HashMap<>();
+    public static final String TEXT_VALUE = "text_value";
 
     static {
         primitives.put(XSConstants.BOOLEAN_DT, Schema.Type.BOOLEAN);
@@ -169,9 +170,9 @@ public class SchemaBuilder {
         typeLevel++;
         Schema schema;
 
-        if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE)
+        if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE) {
             schema = Schema.create(getPrimitiveType((XSSimpleTypeDefinition) type));
-        else {
+        } else {
             String name = complexTypeName(type);
             debug("Creating schema for type " + name);
 
@@ -256,16 +257,15 @@ public class SchemaBuilder {
 
         // Added for Extension
         if (type.derivedFromType(SchemaGrammar.fAnySimpleType, XSConstants.DERIVATION_EXTENSION)) {
-            Schema fieldSchema = createTypeSchema(type.getBaseType(), true, false);
-            if (type.getBaseType().getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE) {
-                String name = validName("text_value");
-                name = SchemaBuilder.uniqueFieldName(fields.values(), name);
-
-                Schema.Field field = new Schema.Field(name, fieldSchema, null, null);
-                field.addProp(Source.SOURCE, "" + new Source("text_value", false));
-
-                fields.put(field.getProp(Source.SOURCE), field);
+            XSComplexTypeDefinition extnType = type;
+            while (extnType.getBaseType().getTypeCategory() == XSTypeDefinition.COMPLEX_TYPE) {
+                extnType = (XSComplexTypeDefinition) extnType.getBaseType();
             }
+            String name = validName(SchemaBuilder.TEXT_VALUE);
+            Schema fieldSchema = createTypeSchema(extnType.getBaseType(), true, false);
+            Schema.Field field = new Schema.Field(name, fieldSchema, null, null);
+            field.addProp(Source.SOURCE, "" + new Source(SchemaBuilder.TEXT_VALUE, false));
+            fields.put(field.getProp(Source.SOURCE), field);
         }
 
         XSParticle particle = type.getParticle();
@@ -343,7 +343,12 @@ public class SchemaBuilder {
 
         boolean attribute = source.getType() == XSConstants.ATTRIBUTE_DECLARATION;
         field.addProp(Source.SOURCE, "" + new Source(source.getName(), attribute));
-
+        if (type.getTypeCategory() == XSTypeDefinition.SIMPLE_TYPE) {
+            short primitiveType = ((XSSimpleTypeDefinition) type).getBuiltInKind();
+            if (primitiveType == XSConstants.DATETIME_DT) {
+                field.addProp("comment", "timestamp");
+            }
+        }
         return field;
     }
 
@@ -367,7 +372,6 @@ public class SchemaBuilder {
         int p = 0;
         for (char c : chars) {
             boolean valid = c >= 'a' && c <= 'z' || c >= 'A' && c <= 'z' || c >= '0' && c <= '9' || c == '_';
-
             boolean separator = c == '.' || c == '-';
 
             if (valid) {

@@ -30,8 +30,9 @@
           "source" : "element price"
         }, {
           "name" : "pub_date",
-          "type" : [ "null", "string" ],
-          "source" : "element pub_date"
+          "type" : [ "null", "long" ],
+          "source" : "element pub_date",
+          "comment" : "TIMESTAMP"
         }, {
           "name" : "review",
           "type" : "string",
