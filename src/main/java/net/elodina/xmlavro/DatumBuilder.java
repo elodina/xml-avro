@@ -33,18 +33,23 @@ public class DatumBuilder {
     private Schema schema;
     private boolean caseSensitiveNames = true;
     private String split;
+    private boolean skipMissingElements, skipMissingAttributes;
 
     public DatumBuilder(Schema schema) {
         this.schema = schema;
         split = "";
+        this.skipMissingAttributes = false;
+        this.skipMissingElements = false;
     }
 
-    public DatumBuilder(Schema schema, String split) {
+    public DatumBuilder(Schema schema, String split, boolean skipMissing) {
         this.schema = schema;
         if (split == null)
             this.split = "";
         else
             this.split = split;
+        this.skipMissingAttributes = skipMissing;
+        this.skipMissingElements = skipMissing;
     }
 
     public static Element parse(InputSource source) {
@@ -261,14 +266,19 @@ public class DatumBuilder {
                     if (field == null) {
                         // Handle wildcard attributes
                         Schema.Field anyField = schema.getField(Source.WILDCARD);
-                        if (anyField == null)
-                            throw new ConverterException("Could not find attribute " + attr.getName() + " in Avro Schema " + schema.getName()
-                                    + " , neither as specific attribute nor 'any' attribute");
 
-                        @SuppressWarnings("unchecked")
-                        Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
-                        map.put(attr.getName(), attr.getValue());
-//                        throw new ConverterException("Unsupported attribute " + attr.getName());
+                        if (anyField == null) {
+                            String message = String.format("Could not find attribute %s of element %s in avro schema",
+                                    attr.getName(), el.getTagName());
+                            if (skipMissingAttributes)
+                                System.err.println(message);
+                            else
+                                throw new ConverterException(message);
+                        } else {
+                            @SuppressWarnings("unchecked")
+                            Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
+                            map.put(attr.getName(), attr.getValue());
+                        }
                     } else {
                         Object datum = createNodeDatum(field.schema(), attr, false);
                         record.put(field.name(), datum);
@@ -318,13 +328,17 @@ public class DatumBuilder {
             }
         } else {
             Schema.Field anyField = schema.getField(Source.WILDCARD);
-            if (anyField == null)
-                throw new ConverterException("Could not find field " + fieldName + " in Avro Schema " + schema.getName()
-                        + " , neither as specific field nor 'any' element");
-
-            @SuppressWarnings("unchecked")
-            Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
-            map.put(fieldName, getContentAsText(child));
+            if (anyField == null) {
+                String message = "Could not find field " + fieldName + " in Avro Schema " + schema.getName() + " , neither as specific field nor 'any' element";
+                if (skipMissingElements)
+                    System.err.println(message);
+                else
+                    throw new ConverterException(message);
+            } else {
+                @SuppressWarnings("unchecked")
+                Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
+                map.put(fieldName, getContentAsText(child));
+            }
         }
     }
 

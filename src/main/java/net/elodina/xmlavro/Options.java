@@ -6,8 +6,8 @@ import java.util.List;
 
 public class Options {
     static final String USAGE1 = "{-d|--debug} {-b|--baseDir <baseDir>} {-xsd|--toAvsc <xsdFile> {<avscFile>} {-sb|--splitby <splitBy>}}";
-    static final String USAGE2 = "{-b|--baseDir <baseDir>} {-s|--stream|--stdout} {-xml|--toAvro <avscFile> {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}}";
-    static final String USAGE3 = "{-d|--debug} {-b|--baseDir <baseDir>} {-xsd|--toAvsc <xsdFile> {<avscFile>}} {-s|--stream|--stdout} {-xml|--toAvro {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}}";
+    static final String USAGE2 = "{-b|--baseDir <baseDir>} {-s|--stream|--stdout} {-xml|--toAvro <avscFile> {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}} {--skipMissing}";
+    static final String USAGE3 = "{-d|--debug} {-b|--baseDir <baseDir>} {-xsd|--toAvsc <xsdFile> {<avscFile>}} {-s|--stream|--stdout} {-xml|--toAvro {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}} {--ignoreMissing}";
 
     static final String USAGE = "XSD to AVSC Usage : " + USAGE1 + "\nXML to AVRO Usage : " + USAGE2 + "\nMixed Usage : " + USAGE3;
 
@@ -19,6 +19,7 @@ public class Options {
 
     boolean debug = false;
     boolean stdout = false;
+    boolean skipMissing = false;
 
     List<Mode> modes = new ArrayList<Mode>();
     String split = "";
@@ -91,6 +92,9 @@ public class Options {
                             throw new IllegalArgumentException("Split element name missing");
                         i++;
                         split = args[i];
+                        break;
+                    case "--ignoreMissing":
+                        skipMissing = true;
                         break;
                     default:
                         throw new IllegalArgumentException("Unsupported option " + arg);

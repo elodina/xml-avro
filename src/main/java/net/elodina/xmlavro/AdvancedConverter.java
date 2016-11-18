@@ -71,7 +71,7 @@ public class AdvancedConverter {
                         c.avroOut = new FileOutputStream(opts.avroFile);
                         System.out.println("Converting: " + opts.xmlFile + " -> " + opts.avroFile);
                     }
-                    c.convertXML(opts.avscFile, opts.split);
+                    c.convertXML(opts.avscFile, opts.split, opts.skipMissing);
                     break;
             }
         }
@@ -93,9 +93,9 @@ public class AdvancedConverter {
         avscOut.close();
     }
 
-    private void convertXML(File avscFile, String split) throws IOException {
+    private void convertXML(File avscFile, String split, boolean skipMissing) throws IOException {
         Schema schema = new Schema.Parser().parse(avscFile);
-        DatumBuilder datumBuilder = new DatumBuilder(schema, split);
+        DatumBuilder datumBuilder = new DatumBuilder(schema, split,skipMissing);
         List<Object> datums = datumBuilder.createDatum(xmlIn);
         xmlIn.close();
         writeAvro(schema, datums);
