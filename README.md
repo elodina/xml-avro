@@ -14,9 +14,9 @@ Additionally it includes simple schemaless converter that converts xml to avro a
 ## Schema-based converter
 Usage:
 ```
-XSD to AVSC Usage : {-d|--debug} {-b|--baseDir <baseDir>} {-xsd|--toAvsc <xsdFile> {<avscFile>}}
-XML to AVRO Usage : {-s|--stream|--stdout} {-xml|--toAvro <avscFile> {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}}
-Mixed Usage : {-d|--debug} {-b|--baseDir <baseDir>} {-xsd|--toAvsc <xsdFile> {<avscFile>}} {-s|--stream|--stdout} {-xml|--toAvro {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>}}
+XSD to AVSC Usage : {-d|--debug} {-b|--baseDir <baseDir>} -xsd|--toAvsc <xsdFile> {<avscFile>}
+XML to AVRO Usage : {-b|--baseDir <baseDir>} {-s|--stream|--stdout} -xml|--toAvro <avscFile> {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>} {-i|--ignoreMissing} {-v|--validateSchema <xsdFile>}
+Mixed Usage : {-d|--debug} {-b|--baseDir <baseDir>} -xsd|--toAvsc <xsdFile> {<avscFile>} {-s|--stream|--stdout} -xml|--toAvro {<xmlFile>} {<avroFile>} {-sb|--splitby <splitBy>} {-i|--ignoreMissing} {-v|--validateSchema <xsdFile>}
 ```
 ## Restrictions
 Schema-based converter currently only supports conversion in one direction: from xml to avro.

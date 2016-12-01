@@ -418,7 +418,7 @@ public class SchemaBuilder {
             System.out.println(new String(prefix) + s);
     }
 
-    public static interface Resolver {
+    public interface Resolver {
         InputStream getStream(String systemId);
     }
 

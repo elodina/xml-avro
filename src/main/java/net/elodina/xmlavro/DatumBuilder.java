@@ -6,6 +6,7 @@ import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import javax.xml.XMLConstants;
 import javax.xml.bind.DatatypeConverter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -16,6 +17,9 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
 import java.io.*;
 import java.util.*;
 
@@ -34,6 +38,7 @@ public class DatumBuilder {
     private boolean caseSensitiveNames = true;
     private String split;
     private boolean skipMissingElements, skipMissingAttributes;
+    private File validationSchema;
 
     public DatumBuilder(Schema schema) {
         this.schema = schema;
@@ -42,7 +47,7 @@ public class DatumBuilder {
         this.skipMissingElements = false;
     }
 
-    public DatumBuilder(Schema schema, String split, boolean skipMissing) {
+    public DatumBuilder(Schema schema, String split, boolean skipMissing, File validationSchema) {
         this.schema = schema;
         if (split == null)
             this.split = "";
@@ -50,23 +55,30 @@ public class DatumBuilder {
             this.split = split;
         this.skipMissingAttributes = skipMissing;
         this.skipMissingElements = skipMissing;
+        this.validationSchema = validationSchema;
     }
 
-    public static Element parse(InputSource source) {
+    private Element parse(InputSource source) {
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
             builderFactory.setNamespaceAware(true);
 
             DocumentBuilder builder = builderFactory.newDocumentBuilder();
             Document doc = builder.parse(source);
+            if (validationSchema != null) {
+                SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+                // load a WXS schema, represented by a Schema instance
+                javax.xml.transform.Source schemaFile = new StreamSource(validationSchema);
+                javax.xml.validation.Schema schema = factory.newSchema(schemaFile);
+                Validator validator = schema.newValidator();
+
+                // validate the DOM tree
+                validator.validate(new DOMSource(doc));
+            }
             return doc.getDocumentElement();
         } catch (ParserConfigurationException | SAXException | IOException e) {
             throw new ConverterException(e);
         }
-    }
-
-    public static TimeZone getDefaultTimeZone() {
-        return defaultTimeZone;
     }
 
     public static void setDefaultTimeZone(TimeZone timeZone) {
@@ -271,7 +283,7 @@ public class DatumBuilder {
                             String message = String.format("Could not find attribute %s of element %s in avro schema",
                                     attr.getName(), el.getTagName());
                             if (skipMissingAttributes)
-                                System.err.println(message);
+                                System.err.println("WARNING : " + message);
                             else
                                 throw new ConverterException(message);
                         } else {
@@ -331,7 +343,7 @@ public class DatumBuilder {
             if (anyField == null) {
                 String message = "Could not find field " + fieldName + " in Avro Schema " + schema.getName() + " , neither as specific field nor 'any' element";
                 if (skipMissingElements)
-                    System.err.println(message);
+                    System.err.println("WARNING : " + message);
                 else
                     throw new ConverterException(message);
             } else {

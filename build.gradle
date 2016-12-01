@@ -2,7 +2,7 @@ apply plugin: 'java'
 apply plugin: 'maven'
 
 group = 'net.elodina'
-version = '0.5'
+version = '0.7'
 
 description = "A simple tool to conver xml to avro and their respective schemas"
 
