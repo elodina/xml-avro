@@ -8,3 +8,8 @@ tmp
 *.jar
 *.war
 *.ear
+/xsd/
+/bin/
+/.gradle/
+/build/
+/out/
