@@ -32,41 +32,51 @@
           "name" : "pub_date",
           "type" : [ "null", "long" ],
           "source" : "element pub_date",
-          "comment" : "TIMESTAMP"
+          "comment" : "timestamp"
         }, {
-          "name" : "review",
-          "type" : "string",
-          "source" : "element review"
-        }, {
-          "name" : "alias",
+          "name" : "type0",
           "type" : {
-            "type" : "record",
-            "name" : "AliasType",
-            "fields" : [ {
-              "name" : "alias_name",
-              "type" : {
-                "type" : "array",
-                "items" : "string"
-              },
-              "source" : "element alias_name"
-            } ]
-          },
-          "source" : "element alias"
-        }, {
-          "name" : "website",
-          "type" : {
-            "type" : "record",
-            "name" : "WebsiteType",
-            "fields" : [ {
-              "name" : "web_url",
-              "type" : {
-                "type" : "array",
-                "items" : "string"
-              },
-              "source" : "element web_url"
-            } ]
-          },
-          "source" : "element website"
+            "type" : "array",
+            "items" : {
+              "type" : "record",
+              "name" : "type1",
+              "fields" : [ {
+                "name" : "review",
+                "type" : [ "null", "string" ],
+                "source" : "element review"
+              }, {
+                "name" : "website",
+                "type" : [ "null", {
+                  "type" : "record",
+                  "name" : "WebsiteType",
+                  "fields" : [ {
+                    "name" : "web_url",
+                    "type" : {
+                      "type" : "array",
+                      "items" : "string"
+                    },
+                    "source" : "element web_url"
+                  } ]
+                } ],
+                "source" : "element website"
+              }, {
+                "name" : "alias",
+                "type" : [ "null", {
+                  "type" : "record",
+                  "name" : "AliasType",
+                  "fields" : [ {
+                    "name" : "alias_name",
+                    "type" : {
+                      "type" : "array",
+                      "items" : "string"
+                    },
+                    "source" : "element alias_name"
+                  } ]
+                } ],
+                "source" : "element alias"
+              } ]
+            }
+          }
         } ]
       }
     },

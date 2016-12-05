@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <x:books xmlns:x="urn:books" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="urn:books C:\Geetha\STOCKX~1\books.xsd">
+         xsi:schemaLocation="urn:books books.xsd">
     <book id="bk001">
         <author>Writer</author>
         <title>The First Book</title>
@@ -8,6 +8,8 @@
         <price>44.95</price>
         <pub_date>2015-09-08T10:46:43+02:00</pub_date>
         <review>An amazing story of nothing.</review>
+        <review>Sample Review</review>
+        <review>Sample Story</review>
         <alias>
             <alias_name>Crap 1</alias_name>
             <alias_name>Crap 2</alias_name>

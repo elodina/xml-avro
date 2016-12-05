@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -26,12 +26,12 @@ import java.io.*;
 import java.util.List;
 
 public class AdvancedConverter {
-    InputStream xmlIn;
-    OutputStream avroOut;
-    FileWriter avscOut;
-    FileInputStream xsdIn;
-    boolean debug;
-    File baseDir;
+    private InputStream xmlIn;
+    private OutputStream avroOut;
+    private FileWriter avscOut;
+    private FileInputStream xsdIn;
+    private boolean debug;
+    private File baseDir;
 
     public static void main(String... args) throws IOException {
         Options opts;
@@ -71,7 +71,7 @@ public class AdvancedConverter {
                         c.avroOut = new FileOutputStream(opts.avroFile);
                         System.out.println("Converting: " + opts.xmlFile + " -> " + opts.avroFile);
                     }
-                    c.convertXML(opts.avscFile, opts.split);
+                    c.convertXML(opts.avscFile, opts.split, opts.skipMissing, opts.validationSchema);
                     break;
             }
         }
@@ -93,9 +93,9 @@ public class AdvancedConverter {
         avscOut.close();
     }
 
-    private void convertXML(File avscFile, String split) throws IOException {
+    private void convertXML(File avscFile, String split, boolean skipMissing, File validationSchema) throws IOException {
         Schema schema = new Schema.Parser().parse(avscFile);
-        DatumBuilder datumBuilder = new DatumBuilder(schema, split);
+        DatumBuilder datumBuilder = new DatumBuilder(schema, split, skipMissing, validationSchema);
         List<Object> datums = datumBuilder.createDatum(xmlIn);
         xmlIn.close();
         writeAvro(schema, datums);
@@ -106,15 +106,14 @@ public class AdvancedConverter {
         DataFileWriter<Object> fileWriter = new DataFileWriter<>(datumWriter);
         fileWriter.setCodec(CodecFactory.snappyCodec());
         fileWriter.create(schema, avroOut);
-        for (int i = 0; i < datums.size(); i++)
-            fileWriter.append(datums.get(i));
+        for (Object datum : datums) fileWriter.append(datum);
         fileWriter.flush();
         avroOut.close();
         fileWriter.close();
     }
 
     private static class BaseDirResolver implements SchemaBuilder.Resolver {
-        private File baseDir;
+        private final File baseDir;
 
         private BaseDirResolver(File baseDir) {
             this.baseDir = baseDir;

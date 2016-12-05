@@ -23,6 +23,7 @@ import java.util.*;
 
 public class SchemaBuilder {
     private static Map<Short, Schema.Type> primitives = new HashMap<>();
+    private static final List<String> HIVE_KEYWORDS = new ArrayList<>();
     public static final String TEXT_VALUE = "text_value";
 
     static {
@@ -49,6 +50,8 @@ public class SchemaBuilder {
         primitives.put(XSConstants.DECIMAL_DT, Schema.Type.DOUBLE);
 
         primitives.put(XSConstants.DATETIME_DT, Schema.Type.LONG);
+        String[] keywords = {"exchange", "over"};
+        HIVE_KEYWORDS.addAll(Arrays.asList(keywords));
     }
 
     private boolean debug;
@@ -392,6 +395,11 @@ public class SchemaBuilder {
         } catch (IllegalArgumentException ignore) {
         }
 
+        // Handle hive keywords
+        if (HIVE_KEYWORDS.contains(s.toLowerCase())) {
+            s = s + "2";
+        }
+
         return s;
     }
 
@@ -410,7 +418,7 @@ public class SchemaBuilder {
             System.out.println(new String(prefix) + s);
     }
 
-    public static interface Resolver {
+    public interface Resolver {
         InputStream getStream(String systemId);
     }
 

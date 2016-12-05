@@ -6,6 +6,7 @@ import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
+import javax.xml.XMLConstants;
 import javax.xml.bind.DatatypeConverter;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -16,6 +17,9 @@ import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
+import javax.xml.transform.stream.StreamSource;
+import javax.xml.validation.SchemaFactory;
+import javax.xml.validation.Validator;
 import java.io.*;
 import java.util.*;
 
@@ -33,35 +37,48 @@ public class DatumBuilder {
     private Schema schema;
     private boolean caseSensitiveNames = true;
     private String split;
+    private boolean skipMissingElements, skipMissingAttributes;
+    private File validationSchema;
 
     public DatumBuilder(Schema schema) {
         this.schema = schema;
         split = "";
+        this.skipMissingAttributes = false;
+        this.skipMissingElements = false;
     }
 
-    public DatumBuilder(Schema schema, String split) {
+    public DatumBuilder(Schema schema, String split, boolean skipMissing, File validationSchema) {
         this.schema = schema;
         if (split == null)
             this.split = "";
         else
             this.split = split;
+        this.skipMissingAttributes = skipMissing;
+        this.skipMissingElements = skipMissing;
+        this.validationSchema = validationSchema;
     }
 
-    public static Element parse(InputSource source) {
+    private Element parse(InputSource source) {
         try {
             DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
             builderFactory.setNamespaceAware(true);
 
             DocumentBuilder builder = builderFactory.newDocumentBuilder();
             Document doc = builder.parse(source);
+            if (validationSchema != null) {
+                SchemaFactory factory = SchemaFactory.newInstance(XMLConstants.W3C_XML_SCHEMA_NS_URI);
+                // load a WXS schema, represented by a Schema instance
+                javax.xml.transform.Source schemaFile = new StreamSource(validationSchema);
+                javax.xml.validation.Schema schema = factory.newSchema(schemaFile);
+                Validator validator = schema.newValidator();
+
+                // validate the DOM tree
+                validator.validate(new DOMSource(doc));
+            }
             return doc.getDocumentElement();
         } catch (ParserConfigurationException | SAXException | IOException e) {
             throw new ConverterException(e);
         }
-    }
-
-    public static TimeZone getDefaultTimeZone() {
-        return defaultTimeZone;
     }
 
     public static void setDefaultTimeZone(TimeZone timeZone) {
@@ -73,7 +90,7 @@ public class DatumBuilder {
         Calendar c = DatatypeConverter.parseDateTime(text);
         if (text.matches(pattern))
             c.setTimeZone(defaultTimeZone);
-        return c.getTimeInMillis() / 1000;
+        return c.getTimeInMillis();
     }
 
     public boolean isCaseSensitiveNames() {
@@ -123,13 +140,15 @@ public class DatumBuilder {
     }
 
     private ArrayList<Node> searchElement(Node ele, String split) {
+        if (ele.getNodeType() != Node.ELEMENT_NODE)
+            return null;
         String name = ele.getLocalName();
         if (name.equals(split)) {
             ArrayList<Node> eleList = new ArrayList<Node>();
             eleList.add(ele);
             return eleList;
         } else {
-            NodeList elements = ((Element) ele).getElementsByTagName(split);
+            NodeList elements = ((Element) ele).getElementsByTagNameNS("*", split);
             if (elements.getLength() == 0) {
                 elements = ele.getChildNodes();
                 for (int i = 0; i < elements.getLength(); i++) {
@@ -261,14 +280,19 @@ public class DatumBuilder {
                     if (field == null) {
                         // Handle wildcard attributes
                         Schema.Field anyField = schema.getField(Source.WILDCARD);
-                        if (anyField == null)
-                            throw new ConverterException("Could not find attribute " + attr.getName() + " in Avro Schema " + schema.getName()
-                                    + " , neither as specific attribute nor 'any' attribute");
 
-                        @SuppressWarnings("unchecked")
-                        Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
-                        map.put(attr.getName(), attr.getValue());
-//                        throw new ConverterException("Unsupported attribute " + attr.getName());
+                        if (anyField == null) {
+                            String message = String.format("Could not find attribute %s of element %s in avro schema",
+                                    attr.getName(), el.getTagName());
+                            if (skipMissingAttributes)
+                                System.err.println("WARNING : " + message);
+                            else
+                                throw new ConverterException(message);
+                        } else {
+                            @SuppressWarnings("unchecked")
+                            Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
+                            map.put(attr.getName(), attr.getValue());
+                        }
                     } else {
                         Object datum = createNodeDatum(field.schema(), attr, false);
                         record.put(field.name(), datum);
@@ -297,7 +321,6 @@ public class DatumBuilder {
         Element child = (Element) node;
         boolean setRecordFromNode = false;
         final String fieldName = child.getLocalName();
-
         Schema.Field field = getFieldBySource(schema, new Source(fieldName, false));
         if (field == null) {
             field = getNestedFieldBySource(schema, new Source(fieldName, false));
@@ -318,13 +341,17 @@ public class DatumBuilder {
             }
         } else {
             Schema.Field anyField = schema.getField(Source.WILDCARD);
-            if (anyField == null)
-                throw new ConverterException("Could not find field " + fieldName + " in Avro Schema " + schema.getName()
-                        + " , neither as specific field nor 'any' element");
-
-            @SuppressWarnings("unchecked")
-            Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
-            map.put(fieldName, getContentAsText(child));
+            if (anyField == null) {
+                String message = "Could not find field " + fieldName + " in Avro Schema " + schema.getName() + " , neither as specific field nor 'any' element";
+                if (skipMissingElements)
+                    System.err.println("WARNING : " + message);
+                else
+                    throw new ConverterException(message);
+            } else {
+                @SuppressWarnings("unchecked")
+                Map<String, String> map = (HashMap<String, String>) record.get(Source.WILDCARD);
+                map.put(fieldName, getContentAsText(child));
+            }
         }
     }
 
@@ -355,9 +382,17 @@ public class DatumBuilder {
             switch (topSchema.getType()) {
                 case ARRAY: {
                     if (!PRIMITIVES.contains(topSchema.getElementType().getType())) {
-                        Schema.Field fieldBySource = getFieldBySource(topSchema.getElementType(), source);
-                        if (fieldBySource != null) {
-                            return field;
+                        String tempSource = null;
+                        try {
+                            tempSource = field.getProp("source");
+                        } catch (Exception e) {
+
+                        }
+                        if (tempSource == null || tempSource.equals("None")) {
+                            Schema.Field fieldBySource = getFieldBySource(topSchema.getElementType(), source);
+                            if (fieldBySource != null) {
+                                return field;
+                            }
                         }
                     }
                 }
