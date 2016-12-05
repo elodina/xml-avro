@@ -90,7 +90,7 @@ public class DatumBuilder {
         Calendar c = DatatypeConverter.parseDateTime(text);
         if (text.matches(pattern))
             c.setTimeZone(defaultTimeZone);
-        return c.getTimeInMillis() / 1000;
+        return c.getTimeInMillis();
     }
 
     public boolean isCaseSensitiveNames() {
@@ -140,13 +140,15 @@ public class DatumBuilder {
     }
 
     private ArrayList<Node> searchElement(Node ele, String split) {
+        if (ele.getNodeType() != Node.ELEMENT_NODE)
+            return null;
         String name = ele.getLocalName();
         if (name.equals(split)) {
             ArrayList<Node> eleList = new ArrayList<Node>();
             eleList.add(ele);
             return eleList;
         } else {
-            NodeList elements = ((Element) ele).getElementsByTagName(split);
+            NodeList elements = ((Element) ele).getElementsByTagNameNS("*", split);
             if (elements.getLength() == 0) {
                 elements = ele.getChildNodes();
                 for (int i = 0; i < elements.getLength(); i++) {
@@ -319,7 +321,6 @@ public class DatumBuilder {
         Element child = (Element) node;
         boolean setRecordFromNode = false;
         final String fieldName = child.getLocalName();
-
         Schema.Field field = getFieldBySource(schema, new Source(fieldName, false));
         if (field == null) {
             field = getNestedFieldBySource(schema, new Source(fieldName, false));
@@ -381,9 +382,17 @@ public class DatumBuilder {
             switch (topSchema.getType()) {
                 case ARRAY: {
                     if (!PRIMITIVES.contains(topSchema.getElementType().getType())) {
-                        Schema.Field fieldBySource = getFieldBySource(topSchema.getElementType(), source);
-                        if (fieldBySource != null) {
-                            return field;
+                        String tempSource = null;
+                        try {
+                            tempSource = field.getProp("source");
+                        } catch (Exception e) {
+
+                        }
+                        if (tempSource == null || tempSource.equals("None")) {
+                            Schema.Field fieldBySource = getFieldBySource(topSchema.getElementType(), source);
+                            if (fieldBySource != null) {
+                                return field;
+                            }
                         }
                     }
                 }
